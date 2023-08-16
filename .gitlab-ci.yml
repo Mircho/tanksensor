@@ -5,7 +5,7 @@ stages:
 build:
   stage: build
   variables:
-    TARGET: 'GarageSensor_F1B024'
+    TARGET: 'Tanksensor2'
   script:
     - 'echo "Starting building the project using makefile"'
     - 'TARGET="${TARGET}" make build'
