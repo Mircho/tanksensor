@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Sensor</title>
+    <style>
+      @import url(pico.fluid.classless.min.css);
+      body > main {
+        padding-top: 0;
+      }
+
+      main > article {
+        padding-top: 0;
+      }
+    </style>
+    <script src="ts.js"></script>
+</head>
+<body>
+  <main>
+    <section id="status">
+      <h2>Tank Status</h2>
+      <figure>
+        <table role="grid">
+          <thead>
+            <tr>
+              <th>Tank</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Liters of water</td>
+              <td id="tank_liters">150</td>
+            </tr>
+            <tr>
+              <td>Percentage full</td>
+              <td id="tank_percentage">63.4</td>
+            </tr>
+            <tr>
+              <td>Status</td>
+              <td id="tank_status">Normal</td>
+            </tr>
+            <tr>
+              <td>Overflow</td>
+              <td><kbd id="tank_overflow">No</kbd></td>
+            </tr>
+          </tbody>
+        </table>
+        <table role="grid">
+          <thead>
+            <tr>
+              <th>Air data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Temperature</td>
+              <td id="air_temperature">21</td>
+            </tr>
+            <tr>
+              <td>Humidity</td>
+              <td id="air_humidity">63.4</td>
+            </tr>
+            <tr>
+              <td>Pressure</td>
+              <td id="air_pressure">97000</td>
+            </tr>
+          </tbody>
+        </table>
+        <table role="grid">
+          <thead>
+            <tr>
+              <th>Service data</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pressure ADC</td>
+              <td id="tank_pressure_adc">400</td>
+            </tr>
+            <tr>
+              <td>Pressure precentage</td>
+              <td id="pressure_percentage">63.4</td>
+            </tr>
+            <tr>
+              <td>Counter raw count</td>
+              <td id="counter_raw_count">180</td>
+            </tr>
+            <tr>
+              <td>Counter frequency</td>
+              <td id="counter_frequency">90</td>
+            </tr>
+          </tbody>
+        </table>
+      </figure>
+    <footer>Last updated: <span id="timestamp"></span></footer>
+    </section>
+    <section id="config-tank">
+      <form id="config-tank-form" method="post">
+        <h2>Low and high thresholds of tank</h2>
+        <label for="tank-low-thr"
+        >Low threshold in liters <span id="tank-low-thr-value">0</span>
+        <input type="range" min="0" max="197" value="30" id="tank-low-thr" name="tank-low-thr" />
+        </label>
+        <label for="tank-high-thr"
+        >High threshold in liters <span id="tank-high-thr-value">0</span>
+        <input type="range" min="0" max="197" value="150" id="tank-high-thr" name="tank-high-thr" />
+        </label>
+        <button type="submit" value="Save">Save</button>
+      </form>
+    </section>
+    <section id="config-pressure">
+      <form id="config-pressure-form" method="post">
+        <h2>Low and high thresholds of pressure</h2>
+        <label for="pressure-low-thr"
+        >Low threshold in ADC <span id="pressure-low-thr-value">0</span>
+        <input type="range" min="0" max="4096" value="30" id="pressure-low-thr" name="pressure-low-thr" />
+        </label>
+        <label for="pressure-high-thr"
+        >High threshold in ADC <span id="pressure-high-thr-value">0</span>
+        <input type="range" min="0" max="4096" value="150" id="pressure-high-thr" name="pressure-high-thr" />
+        </label>
+        <button type="submit" value="Save">Save</button>
+      </form>
+    </section>
+    <section id="config-counter">
+      <form id="config-counter-form" method="post">
+        <h2>Counter threshold</h2>
+        <label for="counter-freq-thr"
+        >Counter frequency threshold <span id="counter-freq-thr-value">0</span>
+        <input type="text" value="30" id="counter-freq-thr" name="counter-freq-thr" />
+        </label>
+        <button type="submit" value="Save">Save</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

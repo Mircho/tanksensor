@@ -1,0 +1,118 @@
+# use empty comment lines, as yq will strip blank lines
+author: Mircho Mirev
+description: Tank sensor, Analog pressure, BMP280, GPIO counter
+version: 2.0
+#
+libs_version: latest
+modules_version: latest
+mongoose_os_version: latest
+#
+arch: esp32
+#
+tags:
+  - c
+  - http
+  - ws
+  - mqtt
+  - rpc
+  - rmt
+  - pcnt
+  - ledc
+#
+sources:
+  - src
+  - src/esp32xx
+incudes:
+  - include/esp32xx
+#
+filesystem:
+  - fs
+#
+build_vars:
+  FREQUENCY_TEST_MODE: 2
+  ESP_IDF_EXTRA_COMPONENTS: "${build_vars.ESP_IDF_EXTRA_COMPONENTS} pcnt rmt"
+  ESP_IDF_SDKCONFIG_OPTS: >
+    ${build_vars.ESP_IDF_SDKCONFIG_OPTS} CONFIG_FLASHMODE_QIO=y CONFIG_FLASHFREQ_80M=y
+
+#
+cflags:
+  - "-DFREQUENCY_TEST_MODE=0"
+#
+config_schema:
+  - ["dns_sd.enable", true]
+  - ["dns_sd.host_name", "tanksensor2"]
+  - ["dns_sd.txt", "version=2"]
+  #
+  - ["wifi.sta_connect_timeout", 30]
+  - ["wifi.sta_cfg_idx", 0]
+  #
+  - ["wifi.sta.enable", true]
+  - ["wifi.sta.ssid", "iotE"]
+  - ["wifi.sta.pass", "delirium"]
+  - ["wifi.sta.dhcp_hostname", "tanksensor2"]
+  #
+  - ["wifi.sta1.enable", true]
+  - ["wifi.sta1.ssid", "linux-bg.org"]
+  - ["wifi.sta1.pass", "@tl@nt@2"]
+  - ["wifi.sta1.dhcp_hostname", "tanksensor2"]
+  #
+  - ["wifi.ap.ssid", "tanksensor2_??????"]
+  - ["wifi.ap.pass", "prasetosalam"]
+  #
+  - ["i2c", "o", {title: "I2C settings"}]
+  - ["i2c.unit_no", "i", 1, {title: "Which hardware unit to use, 0 or 1"}]
+  - ["i2c.enable", "b", true, {title: "Enable I2C"}]
+  - ["i2c.debug", "b", false, {title: "Debug I2C bus activity"}]
+  - ["i2c.sda_gpio", "i", 21, {title: "GPIO to use for SDA"}]
+  - ["i2c.scl_gpio", "i", 22, {title: "GPIO to use for SCL"}]
+  #
+  - ["mqtt.enable", "b", true, {title: "Enable MQTT"}]
+  - ["mqtt.server", "s", "homeassistant:1883", {title: "MQTT server"}]
+  - ["mqtt.reconnect_timeout_min", "d", 2.0, {title: "Starting reconnect timeout"}]
+  - ["mqtt.reconnect_timeout_max", "d", 60.0, {title: "Maximum reconnect timeout"}]
+  #
+  - ["mqtt.topic", "s", "tanksensor2/status", {'title:"Topic to publish status to"': ''}]
+  #
+  - ["http.status_url", "s", "/status", {'title:"status url to register on the http server"': ''}]
+  #
+  - ["webhook", "o", {title: "Webhooks to hit with post json data"}]
+  - ["webhook.url", "s", "http://192.168.2.240:8000/", {'title:"url to post to"': ''}]
+  #
+  - ["tank", "o", {title: "Tank configuration, cylinder"}]
+  - ["tank.adc_pressure.low_threshold", "i", 500, {title: "Low threshold of ADC pressure reading"}]
+  - ["tank.adc_pressure.high_threshold", "i", 680, {title: "High threshold of ADC pressure reading"}]
+  - ["tank.liters.low_threshold", "f", 40, {title: "Low threshold in liters"}]
+  - ["tank.liters.high_threshold", "f", 180, {title: "High threshold in liters"}]
+  - ["tank.frequency.high_threshold", "i", 30, {title: "High threshold of frequency; defines overflow"}]
+  #
+  - ["board", "o", {title: "Board configuration"}]
+  - ["board.led.pin", "i", 2, {title: "LED GPIO pin"}]
+  - ["board.led.active_high", "b", true, {title: "True if LED is on when output is high (1)"}]
+  - ["board.rgb.pin", "i", 5, {title: "LED GPIO pin"}]
+  - ["board.btn.pin", "i", 27, {title: "Button GPIO pin"}]
+  - ["board.btn.pull_up", "b", true, {title: "True if Button is active low and pull-up is needed"}]
+  #
+  - ["board.pressure.pin", "i", 35, {title: "Analog pressure sensor pin"}]
+  #
+  - ["board.frequency.pin", "i", 16, {title: "Frequency sensor pin"}]
+#
+libs:
+  - origin: https://github.com/mongoose-os-libs/dns-sd
+  - origin: https://github.com/mongoose-os-libs/adc
+  - origin: https://github.com/mongoose-os-libs/i2c
+  - origin: https://github.com/mongoose-os-libs/sntp
+  - origin: https://github.com/mongoose-os-libs/wifi
+  - origin: https://github.com/mongoose-os-libs/http-server
+  - origin: https://github.com/mongoose-os-libs/mqtt
+  - origin: https://github.com/mongoose-os-libs/rpc-ws
+  - origin: https://github.com/mongoose-os-libs/rpc-service-ota
+  - origin: https://github.com/mongoose-os-libs/rpc-service-config
+  - origin: https://github.com/mongoose-os-libs/rpc-service-fs
+  - origin: https://github.com/mongoose-os-libs/rpc-service-i2c
+  - origin: https://github.com/mongoose-os-libs/rpc-service-wifi
+  - origin: https://github.com/mongoose-os-libs/ota-http-server
+  - origin: https://github.com/mongoose-os-libs/ota-http-client
+  - origin: https://github.com/mongoose-os-libs/bme280
+  - origin: https://github.com/mongoose-os-libs/neopixel
+# Used by the mos tool to catch mos binaries incompatible with this file format
+manifest_version: 2017-05-18
