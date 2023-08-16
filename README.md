@@ -66,6 +66,23 @@ Polling data can be done using:
 
 JSON containing tank status data plus raw readings from pressure and flow sensors
 
+```
+{
+  "timestamp": 1692219750,
+  "air_temperature": 21.99,
+  "air_pressure": 94734,
+  "air_humidity": 68.9,
+  "tank_liters": 196.3,
+  "tank_percentage": 99.7,
+  "tank_status": "full",
+  "tank_overflow": false,
+  "tank_pressure_adc": 685,
+  "pressure_percentage": 100,
+  "counter_raw_count": 0,
+  "counter_frequency": 0
+}
+```
+
 ### Reporting strategy
 
 Any significant change in water volume or overflow frequency will cause a notification to be published on MQTT topic, over WebSocket and POST data to be sent to the HTTP WebHook URL.
