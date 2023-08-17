@@ -89,7 +89,9 @@ Any significant change in water volume or overflow frequency will cause a notifi
 
 ## UI
 
-Current status and configuration can be done by accessing the HTTP server via a web browser
+Device configuration "app" is available when accessing the built in web server.
+
+Single page app will display current device status as well will allow to configure threshold values. 
 
 ## Some links
 

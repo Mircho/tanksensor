@@ -9,6 +9,7 @@ build:
   script:
     - 'echo "Starting building the project using makefile"'
     - 'TARGET="${TARGET}" make build'
+    - 'cp /home/mircho/tanksesnor/secrets.yml secrets.yml'
   artifacts:
     paths:
       - build/fw.zip
