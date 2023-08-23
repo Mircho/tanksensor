@@ -47,17 +47,17 @@ config_schema:
   - ["wifi.sta_cfg_idx", 0]
   #
   - ["wifi.sta.enable", true]
-  - ["wifi.sta.ssid", "iotE"]
-  - ["wifi.sta.pass", "delirium"]
+  - ["wifi.sta.ssid", "my-main-ap"]
+  - ["wifi.sta.pass", "primary-wifi-secret-password"]
   - ["wifi.sta.dhcp_hostname", "tanksensor2"]
   #
   - ["wifi.sta1.enable", true]
-  - ["wifi.sta1.ssid", "linux-bg.org"]
-  - ["wifi.sta1.pass", "@tl@nt@2"]
+  - ["wifi.sta1.ssid", "some-other-backup-ap"]
+  - ["wifi.sta1.pass", "backup-wifi-secret-password"]
   - ["wifi.sta1.dhcp_hostname", "tanksensor2"]
   #
   - ["wifi.ap.ssid", "tanksensor2_??????"]
-  - ["wifi.ap.pass", "prasetosalam"]
+  - ["wifi.ap.pass", "device-ap-secret-password"]
   #
   - ["i2c", "o", {title: "I2C settings"}]
   - ["i2c.unit_no", "i", 1, {title: "Which hardware unit to use, 0 or 1"}]
