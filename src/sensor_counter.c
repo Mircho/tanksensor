@@ -88,14 +88,11 @@ void clear_task_handle_on_exit(void *arg UNUSED_ARG)
   frequency_task_handle = NULL;
 }
 
+// emit the counter readings
 void process_counter_update(void *ard UNUSED_ARG)
 {
-  // only emit event if any of count or frequency changed
-  if (gpio_counter.count != gpio_counter_reading.count || gpio_counter.frequency != gpio_counter_reading.frequency)
-  {
-    gpio_counter = gpio_counter_reading;
-    mgos_event_trigger(COUNTER_CHANGE, &gpio_counter);
-  }
+  gpio_counter = gpio_counter_reading;
+  mgos_event_trigger(COUNTER_CHANGE, &gpio_counter);
 }
 
 int frequency_count_init(void)

@@ -93,6 +93,20 @@ Device configuration "app" is available when accessing the built in web server.
 
 Single page app will display current device status as well will allow to configure threshold values. 
 
+## Using make
+
+### Debug
+
+According to the [docs] debug levels are respectively:
+
+- 0 ERROR
+- 1 WARNING
+- 2 INFO
+- 3 DEBUG
+- 4 VERBOSE_DEBUG
+
+There are two make targets - `debug_info` and `debug_debug` that will change the output in the logs 
+
 ## Some links
 
 - [Mongoose OS Docs](https://mongoose-os.com/docs/)

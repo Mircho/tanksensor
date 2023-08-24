@@ -53,5 +53,11 @@ localflash:
 flash: 		
 	curl -v -F file=@build/fw.zip http://$(DEVICE_ID)/update
 
+debug-info:
+	mos --port=http://$(DEVICE_ID)/rpc call config.set '{"config":{"debug":{"level":2}}}'
+
+debug-debug:
+	mos --port=http://$(DEVICE_ID)/rpc call config.set '{"config":{"debug":{"level":3}}}'
+
 reboot:		
 	mos --port=http://$(DEVICE_ID)/rpc call Sys.Reboot
