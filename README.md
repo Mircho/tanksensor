@@ -97,7 +97,7 @@ Single page app will display current device status as well will allow to configu
 
 ### Debug
 
-According to the [docs] debug levels are respectively:
+According to the [docs](https://mongoose-os.com/docs/mongoose-os/userguide/debug.md) debug levels are respectively:
 
 - 0 ERROR
 - 1 WARNING
