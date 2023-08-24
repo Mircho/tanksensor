@@ -58,7 +58,7 @@ static void counter_test_handler(struct mg_rpc_request_info *ri, void *cb_arg UN
     return;
   }
 
-  LOG(LL_INFO, ("%s, [Counter] frequency: %d", TAG, freq));
+  LOG(LL_DEBUG, ("%s, [Counter] frequency: %d", TAG, freq));
 
   if (freq == 0)
   {

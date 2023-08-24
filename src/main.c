@@ -24,19 +24,24 @@
 static const int notify_timer_period_msec = 5000;
 static mgos_timer_id notify_timer_id = MGOS_INVALID_TIMER_ID;
 
-// size of the tank in centimiters
+// tank dimensions, volume
 static const float tank_length_cm = 100.0;
 static const float tank_radius_cm = 25.0;
 static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 197.0;
+// threshold values for reporting full or empty status
 static float liters_low_value = -1;
 static float liters_high_value = -1;
+// threshold for pressure percentage difference
+static const float pressure_delta_percentage = 0.8;
 
 // pressure
 static int pressure_low_value = -1;
 static int pressure_high_value = -1;
 // counter threshold
 static int freq_thr_hz = -1;
+// maximum frequency threshold
+static const int max_freq_thr_hz = 200;
 
 static const char *JSON_HEADERS = "Connection: close\r\nContent-Type: application/json";
 static const char *pressure_limits_fmt = "{low_thr:%i, high_thr:%i}";
@@ -92,7 +97,6 @@ static void notify_listeners(void);
 // caller has to dispose of memory
 const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
 {
-  LOG(LL_INFO, ("Status: %d, %s", sensor_info.tank_status, status_text[sensor_info.tank_status]));
   struct json_out json_result = JSON_OUT_MBUF(buffer);
   mbuf_init(buffer, 1024);
   json_printf(&json_result,
@@ -128,7 +132,7 @@ const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
 static void rpc_status_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUSED_ARG,
                                struct mg_rpc_frame_info *fi UNUSED_ARG, struct mg_str args)
 {
-  LOG(LL_INFO, ("RPC: Status requested"));
+  LOG(LL_DEBUG, ("RPC: Status requested"));
   struct mbuf response_buffer;
   getSatusAsJSON(&response_buffer);
   if (response_buffer.len > 0)
@@ -146,7 +150,7 @@ static void http_status_handler(struct mg_connection *c, int ev, void *p UNUSED_
 {
   if (ev != MG_EV_HTTP_REQUEST)
     return;
-  LOG(LL_INFO, ("HTTP: Status requested"));
+  LOG(LL_DEBUG, ("HTTP: Status requested"));
   struct mbuf response_buffer;
   getSatusAsJSON(&response_buffer);
   if (response_buffer.len > 0)
@@ -234,7 +238,7 @@ static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
   case ENV_MEASUREMENT:
   {
     struct mgos_bme280_data *environment_status = evd;
-    LOG(LL_INFO, ("[BME read] temp %f, press %f, humid %f", environment_status->temp, environment_status->press, environment_status->humid));
+    LOG(LL_DEBUG, ("[BME read] temp %f, press %f, humid %f", environment_status->temp, environment_status->press, environment_status->humid));
     sensor_info.timestamp = time(NULL);
     sensor_info.air_temperature = environment_status->temp;
     sensor_info.air_pressure = environment_status->press;
@@ -256,7 +260,7 @@ static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
     double water_depth_cm = 0;
     double tank_volume_cm3 = 0;
 
-    LOG(LL_INFO, ("PRESSURE: Raw ADC value %d", pressure_status->raw_adc));
+    LOG(LL_DEBUG, ("PRESSURE: Raw ADC value %d", pressure_status->raw_adc));
     sensor_info.tank_pressure_adc = pressure_status->raw_adc;
     sensor_info.timestamp = time(NULL);
 
@@ -293,10 +297,10 @@ static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
     }
 
     // percentage change would cause notification to be fired
-    if (abs(sensor_info.pressure_percentage - pressure_percentage) > 0.5)
+    if (abs(sensor_info.pressure_percentage - pressure_percentage) > pressure_delta_percentage)
     {
       sensor_info.pressure_percentage = pressure_percentage;
-      LOG(LL_INFO, ("PRESSURE: Notify"));
+      LOG(LL_DEBUG, ("PRESSURE: Notify"));
       notify_listeners();
     }
     break;
@@ -313,7 +317,7 @@ static void counter_cb(int ev, void *evd, void *user_data UNUSED_ARG)
   case COUNTER_CHANGE:
   {
     gpio_counter_t *gpio_counter = evd;
-    LOG(LL_INFO, ("COUNTER: Count %d, Frequency %d", gpio_counter->count, gpio_counter->frequency));
+    LOG(LL_DEBUG, ("COUNTER: Count %d, Frequency %d", gpio_counter->count, gpio_counter->frequency));
 
     if (sensor_info.counter_raw_count != gpio_counter->count || sensor_info.counter_frequency != gpio_counter->frequency)
     {
@@ -331,7 +335,7 @@ static void counter_cb(int ev, void *evd, void *user_data UNUSED_ARG)
           sensor_info.tank_overflow = false;
         }
       }
-      LOG(LL_INFO, ("COUNTER: Notify"));
+      LOG(LL_DEBUG, ("COUNTER: Notify"));
       notify_listeners();
     }
     break;
@@ -443,14 +447,14 @@ static void counter_set_limits_handler(struct mg_rpc_request_info *ri, void *cb_
                  ri->args_fmt,
                  &cfg_freq_thr_hz) < 1)
   {
-    LOG(LL_INFO, ("%s, [Set Limits] Error in request", TAG));
+    LOG(LL_INFO, ("%s, [Frequency limits] Error in request", TAG));
     mg_rpc_send_errorf(ri, 500, "Bad request. Expected {\"freq_thr\":N}");
     return;
   }
-  if (cfg_freq_thr_hz < 0 || cfg_freq_thr_hz > 1000)
+  if (cfg_freq_thr_hz < 0 || cfg_freq_thr_hz > max_freq_thr_hz)
   {
-    LOG(LL_INFO, ("%s, [Set Limits] Error in request", TAG));
-    mg_rpc_send_errorf(ri, 500, "Bad request. Expected freq_thr in [0..1000]");
+    LOG(LL_INFO, ("%s, [Frequency limits] Error in request", TAG));
+    mg_rpc_send_errorf(ri, 500, "Bad request. Expected freq_thr in [0..%d]", max_freq_thr_hz);
     return;
   }
 

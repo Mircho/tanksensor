@@ -50,14 +50,14 @@ bool pressure_sensor_stop()
 bool sensor_pressure_init()
 {
 #ifndef MGOS_CONFIG_HAVE_BOARD_PRESSURE_PIN
-
-  LOG(LL_INFO, ("%s, [Error] missing definitiion of pressure ADC pin in mos.yml", TAG));
+  LOG(LL_INFO, ("%s, [Error] missing definition of pressure ADC pin in mos.yml", TAG));
   return false;
-
 #endif
 
   pressure_adc_pin = mgos_sys_config_get_board_pressure_pin();
   assert(pressure_adc_pin > 0);
+
+  LOG(LL_INFO, ("%s, [Pressure pin] pin %d", TAG, pressure_adc_pin));
 
   if (!mgos_adc_enable(pressure_adc_pin))
     return false;

@@ -84,7 +84,7 @@ static const uint32_t terminate_task = 0x01;
 
 void clear_task_handle_on_exit(void *arg UNUSED_ARG)
 {
-  LOG(LL_INFO, ("%s, [FREQUENCY TASK] clear task handle", TAG));
+  LOG(LL_DEBUG, ("%s, [FREQUENCY TASK] clear task handle", TAG));
   frequency_task_handle = NULL;
 }
 
@@ -212,12 +212,12 @@ void frequency_count_task_function(void *pvParameter)
     // read counter
     pcnt_get_counter_value(pcnt_unit, &pin_change_count);
 
-    LOG(LL_INFO, ("%s, [FREQUENCY TASK] pcnt counter %d", TAG, pin_change_count));
+    LOG(LL_DEBUG, ("%s, [FREQUENCY TASK] pcnt counter %d", TAG, pin_change_count));
 
     // we count both gpio swings thus we divide by 2
     // and then calculate Hz
     frequency_hz = pin_change_count / 2.0 / sampling_window_sec;
-    LOG(LL_INFO, ("%s, [FREQUENCY TASK] frequency %f", TAG, frequency_hz));
+    LOG(LL_DEBUG, ("%s, [FREQUENCY TASK] frequency %f", TAG, frequency_hz));
 
     gpio_counter_reading.count = pin_change_count;
     gpio_counter_reading.frequency = frequency_hz;
@@ -272,11 +272,12 @@ bool sensor_counter_stop()
 bool sensor_counter_init()
 {
 #ifndef MGOS_CONFIG_HAVE_BOARD_FREQUENCY_PIN
-  LOG(LL_INFO, ("%s, [Error] missing definitiion of pin in mos.yml", TAG));
+  LOG(LL_INFO, ("%s, [Error] missing definition of counter pin in mos.yml", TAG));
   return false;
 #endif
 
   pulse_gpio_pin = mgos_sys_config_get_board_frequency_pin();
+  assert(pulse_gpio_pin > 0);
 
   LOG(LL_INFO, ("%s, [Counter pin] pin %d", TAG, pulse_gpio_pin));
 
