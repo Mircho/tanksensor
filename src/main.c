@@ -20,6 +20,13 @@
 
 #define TAG "Tank sensor main unit"
 
+enum WS_ENDPOINTS
+{
+  WS_ENDPOINT_START = 1000,
+  WS_ENDPOINT_STATUS,
+  WS_ENDPOINT_RAW
+};
+
 // notify timer
 static const int notify_timer_period_msec = 5000;
 static mgos_timer_id notify_timer_id = MGOS_INVALID_TIMER_ID;
@@ -146,8 +153,14 @@ static void rpc_status_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUS
   mbuf_free(&response_buffer);
 }
 
-static void http_status_handler(struct mg_connection *c, int ev, void *p UNUSED_ARG, void *user_data UNUSED_ARG)
+static void http_status_handler(struct mg_connection *c, int ev, void *p UNUSED_ARG, void *user_data)
 {
+  // carry over the flag from the endpoint to the connection
+  if (ev == MG_EV_WEBSOCKET_HANDSHAKE_DONE)
+  {
+    c->user_data = user_data;
+    return;
+  }
   if (ev != MG_EV_HTTP_REQUEST)
     return;
   LOG(LL_DEBUG, ("HTTP: Status requested"));
@@ -172,6 +185,11 @@ static void notify_timer_callback(void *ud)
   notify_listeners();
 }
 
+// gcc deferred cleanup
+void free_post_data(char **buffer) {
+  if(*buffer != NULL) free(*buffer);
+}
+
 static void notify_listeners(void)
 {
   struct mbuf response_buffer;
@@ -193,10 +211,10 @@ notify_http:
   // WS notify
   for (struct mg_connection *c = mgr->active_connections; c != NULL; c = mg_next(mgr, c))
   {
-    if (c->flags & MG_F_IS_WEBSOCKET)
-    {
-      mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT | WEBSOCKET_OP_CONTINUE, response_buffer.buf, response_buffer.len);
-    }
+    if((c->flags & MG_F_IS_WEBSOCKET) == 0) return;
+    if((int)c->user_data != WS_ENDPOINT_STATUS) return;
+
+    mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT | WEBSOCKET_OP_CONTINUE, response_buffer.buf, response_buffer.len);
   }
 
 #ifdef MGOS_CONFIG_HAVE_WEBHOOK
@@ -209,26 +227,31 @@ notify_http:
   {
     switch (ev)
     {
-    case MG_EV_CLOSE/* constant-expression */:
+    case MG_EV_CLOSE /* constant-expression */:
       /* code */
       break;
-    
+
     default:
       break;
     }
   }
 
-  char *post_data = malloc(response_buffer.len + 1);
+  char *post_data __attribute__ ((__cleanup__(free_post_data))) = malloc(response_buffer.len + 1);
   strncpy(post_data, response_buffer.buf, response_buffer.len);
   post_data[response_buffer.len] = '\0';
   mg_connect_http(mgr, webhook_handler, NULL, mgos_sys_config_get_webhook_url(), JSON_HEADERS, post_data);
-  free(post_data);
+  // free(post_data);
 #endif
 out:
 
   mbuf_free(&response_buffer);
 
   notify_timer_id = mgos_set_timer(notify_timer_period_msec, 0, notify_timer_callback, NULL);
+}
+
+static void net_handler(int ev, void *evd, void *user_data UNUSED_ARG)
+{
+  LOG(LL_INFO, ("Websocket handshake request"));
 }
 
 static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
@@ -278,7 +301,8 @@ static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
       pressure_percentage = 100;
     }
 
-    if(pressure_percentage > 0) {
+    if (pressure_percentage > 0)
+    {
       water_depth_cm = (pressure_percentage * tank_radius_cm * 2.0) / 100.0;
       tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1 - water_depth_cm / tank_radius_cm) - (tank_radius_cm - water_depth_cm) * sqrt(2 * tank_radius_cm * water_depth_cm - pow(water_depth_cm, 2)));
     }
@@ -499,17 +523,23 @@ enum mgos_app_init_result mgos_app_init(void)
   mgos_neopixel_set(board_rgb, 0, 0, 0, 0);
   mgos_neopixel_show(board_rgb);
 
-  mg_rpc_add_handler(mgos_rpc_get_global(), "Device.Status",
-                     "{}", rpc_status_handler, NULL);
+  //
+  // MG_EV_WS_OPEN
+  // mgos_event_add_group_handler(MGOS_EVENT_GRP_NET, net_handler, NULL);
+  mgos_event_add_handler(MG_EV_HTTP_REQUEST, net_handler, NULL);
+  // TODO: accept ws connnection on this endpoint and publish status on it
+  mgos_register_http_endpoint(mgos_sys_config_get_http_status_url(), http_status_handler, (void *)WS_ENDPOINT_STATUS);
 
-  mgos_register_http_endpoint(mgos_sys_config_get_http_status_url(), http_status_handler, NULL);
+  // TODO: register second http and ws endpoint for raw counter and adc data
 
   mgos_event_add_group_handler(ENV_EVENT_BASE, bme280_cb, NULL);
-  mgos_event_add_group_handler(PRESSURE_BASE, pressure_cb, NULL);
-  mgos_event_add_group_handler(COUNTER_BASE, counter_cb, NULL);
+  mgos_event_add_group_handler(PRESSURE_EVENT_BASE, pressure_cb, NULL);
+  mgos_event_add_group_handler(COUNTER_EVENT_BASE, counter_cb, NULL);
 
   // Set the rpc methods for this application
   struct mg_rpc *c = mgos_rpc_get_global();
+  mg_rpc_add_handler(c, "Device.Status",
+                     "{}", rpc_status_handler, NULL);
   mg_rpc_add_handler(c, "Pressure.SetLimits",
                      pressure_limits_fmt, pressure_set_limits_handler, NULL);
   mg_rpc_add_handler(c, "Tank.SetLimits",
