@@ -249,11 +249,6 @@ out:
   notify_timer_id = mgos_set_timer(notify_timer_period_msec, 0, notify_timer_callback, NULL);
 }
 
-static void net_handler(int ev, void *evd, void *user_data UNUSED_ARG)
-{
-  LOG(LL_INFO, ("Websocket handshake request"));
-}
-
 static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
   switch (ev)
@@ -523,11 +518,6 @@ enum mgos_app_init_result mgos_app_init(void)
   mgos_neopixel_set(board_rgb, 0, 0, 0, 0);
   mgos_neopixel_show(board_rgb);
 
-  //
-  // MG_EV_WS_OPEN
-  // mgos_event_add_group_handler(MGOS_EVENT_GRP_NET, net_handler, NULL);
-  mgos_event_add_handler(MG_EV_HTTP_REQUEST, net_handler, NULL);
-  // TODO: accept ws connnection on this endpoint and publish status on it
   mgos_register_http_endpoint(mgos_sys_config_get_http_status_url(), http_status_handler, (void *)WS_ENDPOINT_STATUS);
 
   // TODO: register second http and ws endpoint for raw counter and adc data

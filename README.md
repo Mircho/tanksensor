@@ -51,16 +51,22 @@ cflags:
   - "-DFREQUENCY_TEST_MODE=1"
 ```
 
-### Reporting 
+### Pressure measurement
+
+Provided that the pressure sensor can output from 0.5V to 4.5V for 0 to 5 psi [0 to 0.34 atm] and the maximum water column can be 0.5m e.g. 0.05atm of static pressure  (1 atm for every 10m of water) output of the sensor can not overshoot the maximum 3.3 V value for the ADC input. . When overflow occurs dynamic pressure will raise the readings but empirically established that will not overshoot
+
+## Reporting 
 ### Reporting channels
 
+- MQTT (configurable) topic device-id/status
+- Webhook (configurable) - http clinet on device will hit a webserver url (configurable)
 - WebSocket
-- MQTT topic device-id/status (configurable)
-- Webhook - http clinet on device will hit a webserver url (configurable)
+  - http://device-address/status - status for device
+  - http://device-address/raw - raw values from adc pressure readings and counter
 
 Polling data can be done using:
 
-- HTTP endpoint http://device-ip/status (configurable)
+- HTTP endpoint http://device-address/status (configurable)
 - Calling `Device.Status` RPC method
 ### Payload
 
@@ -94,6 +100,9 @@ Device configuration "app" is available when accessing the built in web server.
 Single page app will display current device status as well will allow to configure threshold values. 
 
 ## Using make
+
+- make build
+- make localflash
 
 ### Debug
 
