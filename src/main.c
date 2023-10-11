@@ -17,6 +17,7 @@
 #include "sensor_bme280.h"
 #include "sensor_pressure.h"
 #include "sensor_counter.h"
+#include "sensor.h"
 
 #define TAG "Tank sensor main unit"
 
@@ -73,7 +74,7 @@ char *status_text[] = {
 
 struct sensor_info
 {
-  uint64_t timestamp;
+  time_t timestamp;
   double air_temperature;
   double air_pressure;
   double air_humidity;
@@ -98,6 +99,19 @@ struct sensor_info
     .pressure_percentage = 0.0,
     .counter_raw_count = 0,
     .counter_frequency = 0};
+
+struct sensor_raw
+{
+  time_t    timestamp;
+  uint16_t  tank_pressure_adc;
+  uint16_t  counter_count;
+  float     counter_frequency;
+} sensor_raw = {
+  .timestamp          = 0,
+  .tank_pressure_adc  = 0,
+  .counter_count      = 0,
+  .counter_frequency  = 0
+};
 
 static void notify_listeners(void);
 
@@ -133,6 +147,25 @@ const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
               sensor_info.pressure_percentage,
               sensor_info.counter_raw_count,
               sensor_info.counter_frequency);
+  return buffer;
+}
+
+const struct mbuf *getRawAsJSON(struct mbuf *buffer)
+{
+  struct json_out json_result = JSON_OUT_MBUF(buffer);
+  mbuf_init(buffer,1024);
+  json_printf(  &json_result,
+                "{"
+                "timestamp"
+                "tank_pressure_adc: %d,"
+                "tank_overflow_count: %d,"
+                "tank_overflow_frequency: %3.1f"
+                "}",
+                sensor_raw.timestamp,
+                sensor_raw.tank_pressure_adc,
+                sensor_raw.counter_count,
+                sensor_raw.counter_frequency
+                );
   return buffer;
 }
 

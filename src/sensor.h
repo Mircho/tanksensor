@@ -53,8 +53,12 @@ struct filter_item_average
   bool pass_first;
 };
 
+
 // provide two points like value_map[0] = {500,0}, value_map[1] = {680,100}
 typedef struct filter_item_linear_fit filter_item_linear_fit_t;
+// calculate slope and intercept
+typedef bool(*filter_linear_fit_calc_fn)(filter_item_linear_fit_t *);
+bool filter_linear_fit_calc(filter_item_linear_fit_t *);
 struct filter_item_linear_fit
 {
   filter_item_t super;
@@ -116,8 +120,6 @@ struct observable_value
 {
   char name[20];
   observable_number_t value;
-  float delta_thr;
-  bool force_notify;
   filter_item_t *filters;
   value_observer_item_t *observers;
   set_value_fn set;
@@ -139,8 +141,6 @@ struct observable_value
   observable_value_t var_name __attribute__((__cleanup__(cleanup_observers))) = { \
       .value = initial_value,                                                     \
       .name = #var_name,                                                          \
-      .force_notify = false,                                                      \
-      .delta_thr = 0.0,                                                           \
       .filters = NULL,                                                            \
       .observers = NULL,                                                          \
       .set = set_value,                                                           \

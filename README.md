@@ -53,7 +53,9 @@ cflags:
 
 ### Pressure measurement
 
-Provided that the pressure sensor can output from 0.5V to 4.5V for 0 to 5 psi [0 to 0.34 atm] and the maximum water column can be 0.5m e.g. 0.05atm of static pressure  (1 atm for every 10m of water) output of the sensor can not overshoot the maximum 3.3 V value for the ADC input. . When overflow occurs dynamic pressure will raise the readings but empirically established that will not overshoot
+Provided that the pressure sensor can output from 0.5V to 4.5V for 0 to 5 psi [0 to 0.34 atm] and the maximum water column can be 0.5m e.g. 0.05atm of static pressure  (1 atm for every 10m of water) output of the sensor can not overshoot the maximum 3.3 V value for the ADC input. . When overflow occurs dynamic pressure will raise the readings but empirically established that will not overshoot.
+
+Not much is provided for hardware filtering thus oversampling and exponential moving averaging is applied to stabilize readings.
 
 ## Reporting 
 ### Reporting channels

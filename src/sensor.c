@@ -103,6 +103,16 @@ filter_ret_val_t filter_item_average_fn(filter_item_t *this, observable_number_t
   return FILTER_CONTINUE;
 }
 
+bool filter_linear_fit_calc(filter_item_linear_fit_t *this)
+{
+  if(this->value_map[0][0] == this->value_map[1][0]) {
+    return false;
+  }
+  this->slope_ = (this->value_map[0][1] - this->value_map[1][1]) / (this->value_map[0][0] - this->value_map[1][0]);
+  this->intercept_ = this->value_map[0][1] - this->slope_ * this->value_map[0][0];
+  return true;
+}
+
 filter_ret_val_t filter_item_linear_fit_fn(filter_item_t *this, observable_number_t *var)
 {
   filter_item_linear_fit_t *fi = (filter_item_linear_fit_t *)this;

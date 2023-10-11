@@ -1,12 +1,12 @@
 #include "math.h"
-#include "common/json_utils.h"
-#include "frozen.h"
 #include "mgos_adc.h"
 #include "mgos_system.h"
 #include "mgos_timers.h"
 #include "mgos_rpc.h"
 #include "mgos_sys_config.h"
 #include "mgos_config_util.h"
+
+#include "sensor.h"
 #include "sensor_pressure.h"
 
 #define TAG "Pressure sensor"
@@ -14,30 +14,40 @@
 static int pressure_adc_pin = -1;
 
 static mgos_timer_id adc_timer_id = MGOS_INVALID_TIMER_ID;
-static const int timer_period_msec = 40;
-// oversample and use moving average with a weight preferrence for older values
-// this is a result of just soldering two points on a protoboard instead of
-// adding some simple lpf
-static const uint8_t adc_samples_count = 55;
-static const float adc_window_weight = 0.8;
-
+static const int timer_period_ms = 40;
 
 static pressure_status_t pressure_status = {
     .raw_adc = 0};
 
+observable_value_t pressure_adc = {
+    .value.value = 0,
+    .name = "pressure_adc",
+    .filters = ((void *)0),
+    .observers = ((void *)0),
+    .set = set_value,
+    .process = process_new_value,
+    .notify = notify_observers,
+};
+
+// moving average
+filter_item_exp_moving_average_t pressure_ma_filter = {
+    .super.filter = filter_item_exp_moving_average_fn,
+    .initialized = false,
+    .previous_value = 0,
+    .alpha = 0.8,
+    .pass_first = true
+};
+
+static void pressure_result_callback(observable_value_t *this)
+{
+  pressure_status.raw_adc = (int)this->value.value;
+  mgos_event_trigger(PRESSURE_MEASUREMENT, &pressure_status);
+}
+
 static void pressure_measurement_callback(void *ud)
 {
-  static uint8_t samples_counter = adc_samples_count;
-  static int oversampled_adc = 0;
-  oversampled_adc += mgos_adc_read(pressure_adc_pin);
-  samples_counter--;
-  if (samples_counter == 0)
-  {
-    pressure_status.raw_adc = (int)(adc_window_weight * pressure_status.raw_adc) + (int)((1 - adc_window_weight) * round(oversampled_adc / adc_samples_count));
-    mgos_event_trigger(PRESSURE_MEASUREMENT, &pressure_status);
-    samples_counter = adc_samples_count;
-    oversampled_adc = 0;
-  }
+  int current_sample = mgos_adc_read(pressure_adc_pin);
+  pressure_adc.process(&pressure_adc, current_sample);
 }
 
 bool pressure_sensor_stop()
@@ -53,7 +63,6 @@ bool sensor_pressure_init()
   LOG(LL_INFO, ("%s, [Error] missing definition of pressure ADC pin in mos.yml", TAG));
   return false;
 #endif
-
   pressure_adc_pin = mgos_sys_config_get_board_pressure_pin();
   assert(pressure_adc_pin > 0);
 
@@ -64,7 +73,10 @@ bool sensor_pressure_init()
 
   mgos_event_register_base(PRESSURE_EVENT_BASE, "Tank pressure events");
 
-  adc_timer_id = mgos_set_timer(timer_period_msec, MGOS_TIMER_REPEAT, pressure_measurement_callback, NULL);
+  add_filter(&pressure_adc, (filter_item_t *)&pressure_ma_filter);
+  add_observer(&pressure_adc, pressure_result_callback);
+
+  adc_timer_id = mgos_set_timer(timer_period_ms, MGOS_TIMER_REPEAT, pressure_measurement_callback, NULL);
   if (adc_timer_id == MGOS_INVALID_TIMER_ID)
     return false;
 
