@@ -17,7 +17,8 @@
 #include "sensor_bme280.h"
 #include "sensor_pressure.h"
 #include "sensor_counter.h"
-#include "sensor.h"
+#include "tank_volume.h"
+//#include "sensor.h"
 
 #define TAG "Tank sensor main unit"
 
@@ -32,16 +33,11 @@ enum WS_ENDPOINTS
 static const int notify_timer_period_msec = 5000;
 static mgos_timer_id notify_timer_id = MGOS_INVALID_TIMER_ID;
 
-// tank dimensions, volume
-static const float tank_length_cm = 100.0;
-static const float tank_radius_cm = 25.0;
-static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
+// tank volume
 static const float tank_maximum_liters = 197.0;
 // threshold values for reporting full or empty status
 static float liters_low_value = -1;
 static float liters_high_value = -1;
-// threshold for pressure percentage difference
-static const float pressure_delta_percentage = 0.8;
 
 // pressure
 static int pressure_low_value = -1;
@@ -59,6 +55,13 @@ static const char *freq_thr_fmt = "{freq_thr:%i}";
 const uint8_t RGB_PIN = 5;
 
 struct mgos_neopixel *board_rgb = NULL;
+
+typedef enum notify_type
+{
+  NOTIFY_TIMER = 0,
+  NOTIFY_RAW,
+  NOTIFY_STATUS
+} notify_type_t;
 
 typedef enum tank_status
 {
@@ -94,11 +97,8 @@ struct sensor_info
     .tank_status = TANK_LOW,
     .tank_overflow = false,
     .tank_liters = 0.0,
-    .tank_percentage = 0.0,
-    .tank_pressure_adc = 0,
-    .pressure_percentage = 0.0,
-    .counter_raw_count = 0,
-    .counter_frequency = 0};
+    .tank_percentage = 0.0
+};
 
 struct sensor_raw
 {
@@ -113,13 +113,22 @@ struct sensor_raw
   .counter_frequency  = 0
 };
 
-static void notify_listeners(void);
+static void notify_listeners(notify_type_t notify_reason);
+
+// deferred cleanup
+void cleanup_post_data(char **buffer) {
+  if(*buffer != NULL) free(*buffer);
+}
+
+void cleanup_mbuf(struct mbuf *buffer) {
+  if(buffer != NULL) mbuf_free(buffer);
+}
 
 // caller has to dispose of memory
 const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
 {
   struct json_out json_result = JSON_OUT_MBUF(buffer);
-  mbuf_init(buffer, 1024);
+  // mbuf_init(buffer, 1024);
   json_printf(&json_result,
               "{"
               "timestamp: %d,"
@@ -129,11 +138,7 @@ const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
               "tank_liters: %4.1f,"
               "tank_percentage: %3.1f,"
               "tank_status: \"%s\","
-              "tank_overflow: %B,"
-              "tank_pressure_adc: %d,"
-              "pressure_percentage:%3.1f,"
-              "counter_raw_count: %d,"
-              "counter_frequency: %d"
+              "tank_overflow: %B"
               "}",
               sensor_info.timestamp,
               sensor_info.air_temperature,
@@ -142,21 +147,17 @@ const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
               sensor_info.tank_liters,
               sensor_info.tank_percentage,
               status_text[sensor_info.tank_status],
-              sensor_info.tank_overflow,
-              sensor_info.tank_pressure_adc,
-              sensor_info.pressure_percentage,
-              sensor_info.counter_raw_count,
-              sensor_info.counter_frequency);
+              sensor_info.tank_overflow);
   return buffer;
 }
 
 const struct mbuf *getRawAsJSON(struct mbuf *buffer)
 {
   struct json_out json_result = JSON_OUT_MBUF(buffer);
-  mbuf_init(buffer,1024);
+  // mbuf_init(buffer, 1024);
   json_printf(  &json_result,
                 "{"
-                "timestamp"
+                "timestamp: %d,"
                 "tank_pressure_adc: %d,"
                 "tank_overflow_count: %d,"
                 "tank_overflow_frequency: %3.1f"
@@ -173,8 +174,10 @@ static void rpc_status_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUS
                                struct mg_rpc_frame_info *fi UNUSED_ARG, struct mg_str args)
 {
   LOG(LL_DEBUG, ("RPC: Status requested"));
-  struct mbuf response_buffer;
+  struct mbuf response_buffer __attribute__((__cleanup__(cleanup_mbuf)));
+  mbuf_init(&response_buffer, 1024);
   getSatusAsJSON(&response_buffer);
+
   if (response_buffer.len > 0)
   {
     mg_rpc_send_responsef(ri, "%.*s", response_buffer.len, response_buffer.buf);
@@ -183,11 +186,12 @@ static void rpc_status_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUS
   {
     mg_rpc_send_errorf(ri, 500, "Failed to get status");
   }
-  mbuf_free(&response_buffer);
+  notify_listeners(NOTIFY_STATUS);
 }
 
-static void http_status_handler(struct mg_connection *c, int ev, void *p UNUSED_ARG, void *user_data)
+static void http_handler(struct mg_connection *c, int ev, void *p, void *user_data)
 {
+  struct http_message *hm = (struct http_message *)p;
   // carry over the flag from the endpoint to the connection
   if (ev == MG_EV_WEBSOCKET_HANDSHAKE_DONE)
   {
@@ -197,8 +201,17 @@ static void http_status_handler(struct mg_connection *c, int ev, void *p UNUSED_
   if (ev != MG_EV_HTTP_REQUEST)
     return;
   LOG(LL_DEBUG, ("HTTP: Status requested"));
-  struct mbuf response_buffer;
-  getSatusAsJSON(&response_buffer);
+
+  struct mbuf response_buffer __attribute__((__cleanup__(cleanup_mbuf)));
+  mbuf_init(&response_buffer, 1024);
+
+  if(strncmp(mgos_sys_config_get_http_status_url(), hm->uri.p, hm->uri.len) == 0) {
+    getSatusAsJSON(&response_buffer);
+  }
+  if(strncmp(mgos_sys_config_get_http_raw_url(), hm->uri.p, hm->uri.len) == 0) {
+    getRawAsJSON(&response_buffer);
+  }
+
   if (response_buffer.len > 0)
   {
     mg_send_head(c, 200, response_buffer.len, JSON_HEADERS);
@@ -210,74 +223,96 @@ static void http_status_handler(struct mg_connection *c, int ev, void *p UNUSED_
     mg_send(c, "", 0);
   }
   c->flags |= (MG_F_SEND_AND_CLOSE);
-  mbuf_free(&response_buffer);
 }
 
 static void notify_timer_callback(void *ud)
 {
-  notify_listeners();
+  LOG(LL_INFO, ("Notify timer called"));
+  notify_listeners(NOTIFY_TIMER);
 }
 
-// gcc deferred cleanup
-void free_post_data(char **buffer) {
-  if(*buffer != NULL) free(*buffer);
-}
-
-static void notify_listeners(void)
+// notify over mqtt, websocket and webhooks (status only)
+static void notify_listeners(notify_type_t notify_reason)
 {
-  struct mbuf response_buffer;
   struct mg_mgr *mgr = mgos_get_mgr();
+  
+  struct mbuf response_buffer __attribute__((__cleanup__(cleanup_mbuf)));
+  struct mbuf response_raw_buffer __attribute__((__cleanup__(cleanup_mbuf)));
+
+  static time_t last_notify_timer;
 
   mgos_clear_timer(notify_timer_id);
 
+  if(last_notify_timer == sensor_info.timestamp) {
+    sensor_info.timestamp = time(NULL);
+  }
+  last_notify_timer = sensor_info.timestamp;
+
+  mbuf_init(&response_buffer, 1024);
   getSatusAsJSON(&response_buffer);
 
-#ifdef MGOS_CONFIG_HAVE_MQTT_TOPIC
+  mbuf_init(&response_raw_buffer, 1024);
+  getRawAsJSON(&response_raw_buffer);
+
+#ifdef MGOS_CONFIG_HAVE_MQTT_STATUS_TOPIC
   // MQTT notify
-  if (!mgos_mqtt_global_is_connected() || strlen(mgos_sys_config_get_mqtt_topic()) == 0)
+  if (!mgos_mqtt_global_is_connected() || strlen(mgos_sys_config_get_mqtt_status_topic()) == 0)
     goto notify_http;
 
-  mgos_mqtt_pub(mgos_sys_config_get_mqtt_topic(), response_buffer.buf, response_buffer.len, 1, false);
+  if(notify_reason != NOTIFY_RAW) {
+    mgos_mqtt_pub(mgos_sys_config_get_mqtt_status_topic(), response_buffer.buf, response_buffer.len, 1, false);
+  }
+
+  if(notify_reason == NOTIFY_RAW) {
+    mgos_mqtt_pub(mgos_sys_config_get_mqtt_raw_topic(), response_raw_buffer.buf, response_raw_buffer.len, 1, false);
+  }
+
+  notify_http:
 #endif
 
-notify_http:
   // WS notify
   for (struct mg_connection *c = mgr->active_connections; c != NULL; c = mg_next(mgr, c))
   {
-    if((c->flags & MG_F_IS_WEBSOCKET) == 0) return;
-    if((int)c->user_data != WS_ENDPOINT_STATUS) return;
+    if((c->flags & MG_F_IS_WEBSOCKET) == 0) continue;
+    if((int)c->user_data == WS_ENDPOINT_STATUS && notify_reason != NOTIFY_RAW) {
+      mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT | WEBSOCKET_OP_CONTINUE, response_buffer.buf, response_buffer.len);
+    }
 
-    mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT | WEBSOCKET_OP_CONTINUE, response_buffer.buf, response_buffer.len);
+    if((int)c->user_data == WS_ENDPOINT_RAW && notify_reason == NOTIFY_RAW) {
+      mg_send_websocket_frame(c, WEBSOCKET_OP_TEXT | WEBSOCKET_OP_CONTINUE, response_raw_buffer.buf, response_raw_buffer.len);
+    }
+
   }
 
 #ifdef MGOS_CONFIG_HAVE_WEBHOOK
   // Webbhook notify
-  if (strlen(mgos_sys_config_get_webhook_url()) == 0)
-    goto out;
+  const char *webhook_url = mgos_sys_config_get_webhook_url();
+  if (webhook_url == NULL) goto notify_out;
+  LOG(LL_INFO, ("Notify WebHook URL:  %s", webhook_url));
 
   void webhook_handler(struct mg_connection * c, int ev, void *evd,
-                       void *cb_arg)
+                      void *cb_arg)
   {
     switch (ev)
     {
     case MG_EV_CLOSE /* constant-expression */:
       /* code */
       break;
-
+    case MG_EV_TIMER /* handle timeouts */:
+      LOG(LL_INFO, ("Webhook timed out!"));
+      break;
     default:
       break;
     }
   }
 
-  char *post_data __attribute__ ((__cleanup__(free_post_data))) = malloc(response_buffer.len + 1);
+  char *post_data __attribute__ ((__cleanup__(cleanup_post_data))) = malloc(response_buffer.len + 1);
   strncpy(post_data, response_buffer.buf, response_buffer.len);
   post_data[response_buffer.len] = '\0';
   mg_connect_http(mgr, webhook_handler, NULL, mgos_sys_config_get_webhook_url(), JSON_HEADERS, post_data);
-  // free(post_data);
-#endif
-out:
 
-  mbuf_free(&response_buffer);
+  notify_out:
+#endif
 
   notify_timer_id = mgos_set_timer(notify_timer_period_msec, 0, notify_timer_callback, NULL);
 }
@@ -294,7 +329,6 @@ static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
     sensor_info.air_temperature = environment_status->temp;
     sensor_info.air_pressure = environment_status->press;
     sensor_info.air_humidity = environment_status->humid;
-    // notify_listeners();
     break;
   }
   }
@@ -302,99 +336,65 @@ static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 
 static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
-  switch (ev)
+  // skip anything but pressure measurement
+  if(ev != PRESSURE_MEASUREMENT) return;
+  pressure_status_t *pressure_status = evd;
+  sensor_raw.timestamp = time(NULL);
+  sensor_raw.tank_pressure_adc = pressure_status->raw_adc;
+}
+
+static void tank_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
+{
+  // skip anything but valid measurements
+  if(ev != VOLUME_MEASUREMENT) return;
+  tank_volume_t *tank_volume_measurement = (tank_volume_t *)evd;
+  sensor_info.timestamp = time(NULL);
+  sensor_info.tank_liters = tank_volume_measurement->tank_liters;
+  sensor_info.tank_percentage = tank_volume_measurement->tank_percentage;
+
+  // text key representing status will be added in the
+  // JSON preparation function
+
+  tank_status_t tank_status = TANK_NORMAL;
+  if (sensor_info.tank_liters < liters_low_value)
   {
-  case PRESSURE_MEASUREMENT:
+    tank_status = TANK_LOW;
+  }
+  if (sensor_info.tank_liters > liters_high_value)
   {
-    pressure_status_t *pressure_status = evd;
-    float pressure_percentage = 0;
-    double water_depth_cm = 0;
-    double tank_volume_cm3 = 0;
-
-    LOG(LL_DEBUG, ("PRESSURE: Raw ADC value %d", pressure_status->raw_adc));
-    sensor_info.tank_pressure_adc = pressure_status->raw_adc;
-    sensor_info.timestamp = time(NULL);
-
-    sensor_info.tank_status = TANK_NORMAL;
-    if (sensor_info.tank_pressure_adc > pressure_low_value && sensor_info.tank_pressure_adc < pressure_high_value)
-    {
-      pressure_percentage = 100 * ((sensor_info.tank_pressure_adc - pressure_low_value) / fabs(pressure_high_value - pressure_low_value));
-    }
-    if (sensor_info.tank_pressure_adc <= pressure_low_value)
-    {
-      pressure_percentage = 0;
-    }
-    if (sensor_info.tank_pressure_adc >= pressure_high_value)
-    {
-      pressure_percentage = 100;
-    }
-
-    if (pressure_percentage > 0)
-    {
-      water_depth_cm = (pressure_percentage * tank_radius_cm * 2.0) / 100.0;
-      tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1 - water_depth_cm / tank_radius_cm) - (tank_radius_cm - water_depth_cm) * sqrt(2 * tank_radius_cm * water_depth_cm - pow(water_depth_cm, 2)));
-    }
-
-    sensor_info.tank_liters = tank_volume_cm3 / 1000.0;
-    sensor_info.tank_percentage = sensor_info.tank_liters / tank_maximum_liters * 100.0;
-
-    if (sensor_info.tank_liters < liters_low_value)
-    {
-      sensor_info.tank_status = TANK_LOW;
-    }
-
-    if (sensor_info.tank_liters > liters_high_value)
-    {
-      sensor_info.tank_status = TANK_FULL;
-    }
-
-    // percentage change would cause notification to be fired
-    if (abs(sensor_info.pressure_percentage - pressure_percentage) > pressure_delta_percentage)
-    {
-      sensor_info.pressure_percentage = pressure_percentage;
-      LOG(LL_DEBUG, ("PRESSURE: Notify"));
-      notify_listeners();
-    }
-    break;
+    tank_status = TANK_FULL;
   }
-  default:
-    assert(0 && "We should never be here");
-  }
+  sensor_info.tank_status = tank_status;
+
+  notify_listeners(NOTIFY_STATUS);
 }
 
 static void counter_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
-  switch (ev)
-  {
-  case COUNTER_CHANGE:
-  {
-    gpio_counter_t *gpio_counter = evd;
-    LOG(LL_DEBUG, ("COUNTER: Count %d, Frequency %d", gpio_counter->count, gpio_counter->frequency));
+  if(ev != COUNTER_CHANGE) return;
 
-    if (sensor_info.counter_raw_count != gpio_counter->count || sensor_info.counter_frequency != gpio_counter->frequency)
-    {
-      sensor_info.counter_raw_count = gpio_counter->count;
-      sensor_info.counter_frequency = gpio_counter->frequency;
-      sensor_info.timestamp = time(NULL);
-      if (freq_thr_hz > 0)
-      {
-        if (gpio_counter->frequency >= freq_thr_hz)
-        {
-          sensor_info.tank_overflow = true;
-        }
-        else
-        {
-          sensor_info.tank_overflow = false;
-        }
-      }
-      LOG(LL_DEBUG, ("COUNTER: Notify"));
-      notify_listeners();
-    }
-    break;
+  gpio_counter_t *gpio_counter = evd;
+  LOG(LL_DEBUG, ("COUNTER: Count %d, Frequency %d", gpio_counter->count, gpio_counter->frequency));
+
+  if (sensor_raw.counter_count == gpio_counter->count && sensor_raw.counter_frequency == gpio_counter->frequency) return;
+
+  sensor_raw.timestamp = time(NULL);
+  sensor_raw.counter_count = gpio_counter->count;
+  sensor_raw.counter_frequency = gpio_counter->frequency;
+  notify_listeners(NOTIFY_RAW);
+
+  if(freq_thr_hz == 0) return;
+
+  bool tank_overflow = false;
+  if (gpio_counter->frequency >= freq_thr_hz)
+  {
+    tank_overflow = true;
   }
-  default:
-    assert(0 && "We should never be here");
-  }
+  if(sensor_info.tank_overflow == tank_overflow) return;
+  
+  sensor_info.timestamp = time(NULL);
+  sensor_info.tank_overflow = tank_overflow;
+  notify_listeners(NOTIFY_STATUS);
 }
 
 // set new limits and store them in device config
@@ -536,8 +536,10 @@ enum mgos_app_init_result mgos_app_init(void)
   liters_high_value = mgos_sys_config_get_tank_liters_high_threshold();
   freq_thr_hz = mgos_sys_config_get_tank_frequency_high_threshold();
 
-  if (!sensor_bme280_init())
-    return MGOS_APP_INIT_ERROR;
+
+  LOG(LL_INFO, ("Config read"));
+  // if (!sensor_bme280_init())
+  //   return MGOS_APP_INIT_ERROR;
 
   if (!sensor_pressure_init())
     return MGOS_APP_INIT_ERROR;
@@ -547,16 +549,21 @@ enum mgos_app_init_result mgos_app_init(void)
 
   sensor_counter_start();
 
+  LOG(LL_INFO, ("Periphery started"));
+
   board_rgb = mgos_neopixel_create(mgos_sys_config_get_board_rgb_pin(), 1, MGOS_NEOPIXEL_ORDER_RGB);
   mgos_neopixel_set(board_rgb, 0, 0, 0, 0);
   mgos_neopixel_show(board_rgb);
 
-  mgos_register_http_endpoint(mgos_sys_config_get_http_status_url(), http_status_handler, (void *)WS_ENDPOINT_STATUS);
+  // use two handlers registrations to tag the ws connections
+  mgos_register_http_endpoint(mgos_sys_config_get_http_status_url(), http_handler, (void *)WS_ENDPOINT_STATUS);
+  mgos_register_http_endpoint(mgos_sys_config_get_http_raw_url(), http_handler, (void *)WS_ENDPOINT_RAW);
 
   // TODO: register second http and ws endpoint for raw counter and adc data
 
   mgos_event_add_group_handler(ENV_EVENT_BASE, bme280_cb, NULL);
   mgos_event_add_group_handler(PRESSURE_EVENT_BASE, pressure_cb, NULL);
+  mgos_event_add_group_handler(VOLUME_EVENT_BASE, tank_volume_cb, NULL);
   mgos_event_add_group_handler(COUNTER_EVENT_BASE, counter_cb, NULL);
 
   // Set the rpc methods for this application
@@ -574,7 +581,7 @@ enum mgos_app_init_result mgos_app_init(void)
   mg_rpc_add_handler(c, "Counter.SetLimits",
                      freq_thr_fmt, counter_set_limits_handler, NULL);
 
-  notify_listeners();
+  // notify_listeners();
 
   return MGOS_APP_INIT_SUCCESS;
 }

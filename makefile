@@ -21,12 +21,15 @@ prepare_yml:
 	yq e '(.config_schema.[] | select(contains(["wifi.ap.pass"])) | .[1]) = "'$(AP_PASS)'"' -i mos.yml
 	yq e '(.config_schema.[] | select(contains(["wifi.sta.pass"])) | .[1]) = "'$(WIFI_PASS)'"' -i mos.yml
 	yq e '(.config_schema.[] | select(contains(["wifi.sta1.pass"])) | .[1]) = "'$(WIFI1_PASS)'"' -i mos.yml
+	# replace application name
+	yq e '.name = "'$(DEVICE_ID)'"' -i mos.yml
 	# replace device id
 	yq e '(.config_schema.[] | select(contains(["dns_sd.host_name"])) | .[1]) = "'$(DEVICE_ID)'"' -i mos.yml
 	yq e '(.config_schema.[] | select(contains(["wifi.sta.dhcp_hostname"])) | .[1]) = "'$(DEVICE_ID)'"' -i mos.yml
 	yq e '(.config_schema.[] | select(contains(["wifi.sta1.dhcp_hostname"])) | .[1]) = "'$(DEVICE_ID)'"' -i mos.yml
 	yq e '(.config_schema.[] | select(contains(["wifi.ap.ssid"])) | .[1]) = "'$(DEVICE_ID)'_??????"' -i mos.yml
-	yq e '(.config_schema.[] | select(contains(["mqtt.topic"])) | .[2]) = "'$(DEVICE_ID)'/status"' -i mos.yml
+	yq e '(.config_schema.[] | select(contains(["mqtt.status_topic"])) | .[2]) = "'$(DEVICE_ID)'/status"' -i mos.yml
+	yq e '(.config_schema.[] | select(contains(["mqtt.raw_topic"])) | .[2]) = "'$(DEVICE_ID)'/raw"' -i mos.yml
 
 clean_yml:
 	yq e '(.config_schema.[] | select(contains(["wifi.sta.ssid"])) | .[1]) = ""' -i mos.yml
@@ -52,6 +55,9 @@ localflash:
 
 flash: 		
 	curl -v -F file=@build/fw.zip http://$(DEVICE_ID)/update
+
+asmgen:
+	xtensa-esp32-elf-objdump -S --disassemble build/objs/${DEVICE_ID}.elf > ${DEVICE_ID}.dump
 
 debug-info:
 	mos --port=http://$(DEVICE_ID)/rpc call config.set '{"config":{"debug":{"level":2}}}'

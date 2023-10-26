@@ -1,5 +1,6 @@
 # use empty comment lines, as yq will strip blank lines
 author: Mircho Mirev
+name: tanksensor2
 description: Tank sensor, Analog pressure, BMP280, GPIO counter
 version: 2.0
 #
@@ -47,15 +48,16 @@ config_schema:
   - ["wifi.sta_cfg_idx", 0]
   #
   - ["wifi.sta.enable", true]
-  - ["wifi.sta.ssid", "iotE"]
-  - ["wifi.sta.pass", "delirium"]
+  - ["wifi.sta.ssid", "linux-bg.org"]
+  - ["wifi.sta.pass", "@tl@nt@2"]
   - ["wifi.sta.dhcp_hostname", "tanksensor2"]
   #
   - ["wifi.sta1.enable", true]
-  - ["wifi.sta1.ssid", "linux-bg.org"]
-  - ["wifi.sta1.pass", "@tl@nt@2"]
+  - ["wifi.sta1.ssid", "iotE"]
+  - ["wifi.sta1.pass", "delirium"]
   - ["wifi.sta1.dhcp_hostname", "tanksensor2"]
   #
+  - ["wifi.ap.enable", false]
   - ["wifi.ap.ssid", "tanksensor2_??????"]
   - ["wifi.ap.pass", "prasetosalam"]
   #
@@ -71,12 +73,14 @@ config_schema:
   - ["mqtt.reconnect_timeout_min", "d", 2.0, {title: "Starting reconnect timeout"}]
   - ["mqtt.reconnect_timeout_max", "d", 60.0, {title: "Maximum reconnect timeout"}]
   #
-  - ["mqtt.topic", "s", "tanksensor2/status", {'title:"Topic to publish status to"': ''}]
+  - ["mqtt.status_topic", "s", "tanksensor2/status", {title: "Topic to publish status to"}]
+  - ["mqtt.raw_topic", "s", "tanksensor2/raw", {title: "Topic to publish raw data to"}]
   #
-  - ["http.status_url", "s", "/status", {'title:"status url to register on the http server"': ''}]
+  - ["http.status_url", "s", "/status", {title: "status url for get or ws"}]
+  - ["http.raw_url", "s", "/raw", {title: "raw data url for get or ws"}]
   #
   - ["webhook", "o", {title: "Webhooks to hit with post json data"}]
-  - ["webhook.url", "s", "http://192.168.2.240:8000/", {'title:"url to post to"': ''}]
+  - ["webhook.url", "s", "http://thisdoesnotexist.local/test", {title: "url to post to"}]
   #
   - ["tank", "o", {title: "Tank configuration, cylinder"}]
   - ["tank.adc_pressure.low_threshold", "i", 500, {title: "Low threshold of ADC pressure reading"}]

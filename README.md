@@ -72,29 +72,44 @@ Polling data can be done using:
 - Calling `Device.Status` RPC method
 ### Payload
 
-JSON containing tank status data plus raw readings from pressure and flow sensors
+JSON containing tank status data readings
 
 ```
 {
-  "timestamp": 1692219750,
-  "air_temperature": 21.99,
-  "air_pressure": 94734,
-  "air_humidity": 68.9,
-  "tank_liters": 196.3,
-  "tank_percentage": 99.7,
-  "tank_status": "full",
-  "tank_overflow": false,
-  "tank_pressure_adc": 685,
-  "pressure_percentage": 100,
-  "counter_raw_count": 0,
-  "counter_frequency": 0
+  "timestamp": 1698212727,
+  "air_temperature": 0.0,
+  "air_pressure": 0.0,
+  "air_humidity": 0.0,
+  "tank_liters": 0.0,
+  "tank_percentage": 0.0,
+  "tank_status": "low",
+  "tank_overflow": false
+}
+```
+
+JSON containing raw tank status data readings from pressure and flow sensors
+
+```
+{
+  "timestamp": 1698183816,
+  "tank_pressure_adc": 0,
+  "tank_overflow_count": 0,
+  "tank_overflow_frequency": 0.0
 }
 ```
 
 ### Reporting strategy
 
-Any significant change in water volume or overflow frequency will cause a notification to be published on MQTT topic, over WebSocket and POST data to be sent to the HTTP WebHook URL.
+Any significant change in water volume or overflow status will cause a notification to be published on MQTT topic, over WebSocket and POST data to be sent to the HTTP WebHook URL.
 
+### Configuration
+
+Setting device config can be done over http using the mos tool:
+
+```
+mos call config.set '{"config":{"mqtt":{"server":"garagepi4:1883"}}}' --port http://tanksensor2/rpc
+mos call config.save --port http://tanksensor2/rpc
+```
 ## UI
 
 Device configuration "app" is available when accessing the built in web server.
