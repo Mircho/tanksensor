@@ -85,10 +85,6 @@ struct sensor_info
   bool tank_overflow;
   float tank_liters;
   float tank_percentage;
-  uint16_t tank_pressure_adc;
-  float pressure_percentage;
-  uint16_t counter_raw_count;
-  uint16_t counter_frequency;
 } sensor_info = {
     .timestamp = 0,
     .air_temperature = 0.0,
@@ -319,19 +315,13 @@ static void notify_listeners(notify_type_t notify_reason)
 
 static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
-  switch (ev)
-  {
-  case ENV_MEASUREMENT:
-  {
-    struct mgos_bme280_data *environment_status = evd;
-    LOG(LL_DEBUG, ("[BME read] temp %f, press %f, humid %f", environment_status->temp, environment_status->press, environment_status->humid));
-    sensor_info.timestamp = time(NULL);
-    sensor_info.air_temperature = environment_status->temp;
-    sensor_info.air_pressure = environment_status->press;
-    sensor_info.air_humidity = environment_status->humid;
-    break;
-  }
-  }
+  if(ev != ENV_MEASUREMENT) return;
+  struct mgos_bme280_data *environment_status = evd;
+  LOG(LL_DEBUG, ("[BME read] temp %f, press %f, humid %f", environment_status->temp, environment_status->press, environment_status->humid));
+  sensor_info.timestamp = time(NULL);
+  sensor_info.air_temperature = environment_status->temp;
+  sensor_info.air_pressure = environment_status->press;
+  sensor_info.air_humidity = environment_status->humid;
 }
 
 static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
@@ -341,6 +331,7 @@ static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
   pressure_status_t *pressure_status = evd;
   sensor_raw.timestamp = time(NULL);
   sensor_raw.tank_pressure_adc = pressure_status->raw_adc;
+  notify_listeners(NOTIFY_RAW);
 }
 
 static void tank_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
@@ -538,8 +529,8 @@ enum mgos_app_init_result mgos_app_init(void)
 
 
   LOG(LL_INFO, ("Config read"));
-  // if (!sensor_bme280_init())
-  //   return MGOS_APP_INIT_ERROR;
+  if (!sensor_bme280_init())
+    return MGOS_APP_INIT_ERROR;
 
   if (!sensor_pressure_init())
     return MGOS_APP_INIT_ERROR;
@@ -548,6 +539,8 @@ enum mgos_app_init_result mgos_app_init(void)
     return MGOS_APP_INIT_ERROR;
 
   sensor_counter_start();
+
+  tank_volume_init(pressure_low_value, pressure_high_value);
 
   LOG(LL_INFO, ("Periphery started"));
 
@@ -558,8 +551,6 @@ enum mgos_app_init_result mgos_app_init(void)
   // use two handlers registrations to tag the ws connections
   mgos_register_http_endpoint(mgos_sys_config_get_http_status_url(), http_handler, (void *)WS_ENDPOINT_STATUS);
   mgos_register_http_endpoint(mgos_sys_config_get_http_raw_url(), http_handler, (void *)WS_ENDPOINT_RAW);
-
-  // TODO: register second http and ws endpoint for raw counter and adc data
 
   mgos_event_add_group_handler(ENV_EVENT_BASE, bme280_cb, NULL);
   mgos_event_add_group_handler(PRESSURE_EVENT_BASE, pressure_cb, NULL);
@@ -581,7 +572,7 @@ enum mgos_app_init_result mgos_app_init(void)
   mg_rpc_add_handler(c, "Counter.SetLimits",
                      freq_thr_fmt, counter_set_limits_handler, NULL);
 
-  // notify_listeners();
+  notify_listeners(NOTIFY_TIMER);
 
   return MGOS_APP_INIT_SUCCESS;
 }

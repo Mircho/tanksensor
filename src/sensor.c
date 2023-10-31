@@ -2,6 +2,8 @@
 #include "stdio.h"
 #include "assert.h"
 
+#include "mgos.h"
+
 #include "sensor.h"
 
 void add_filter(observable_value_t *ov, filter_item_t *fi)
@@ -84,6 +86,7 @@ filter_ret_val_t filter_item_exp_moving_average_fn(filter_item_t *this, observab
   }
   var->value = fi->previous_value + fi->alpha * (var->value - fi->previous_value);
   fi->previous_value = var->value;
+
   return FILTER_CONTINUE;
 }
 
@@ -122,7 +125,6 @@ filter_ret_val_t filter_item_linear_fit_fn(filter_item_t *this, observable_numbe
   // y1 - slope*x1
   // float intercept = fi->value_map[0][1] - slope * fi->value_map[0][0];
   var->value = fi->slope_ * var->value + fi->intercept_;
-
   return FILTER_CONTINUE;
 }
 

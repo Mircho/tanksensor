@@ -19,6 +19,13 @@ FireBeetle ESP32 based and has the following sensors:
 - Fluid flow counter sensor [image](docs/flow-counter-sensor.jpg)
 - BMP280 for environment information
 
+### Pictures
+
+- [BMP280 sensor node on a laser cut holder](./docs/sensor-box/bmp280-holder.jpg)
+- [BMP280 in enclosure](./docs/sensor-box/bmp280-encolsure.jpg)
+- [Sensor node open](./docs/sensor-box/node-open.jpg)
+- [Sensor node closed](./docs/sensor-box/node-closed.jpg)
+
 ## Tank
 
 The water tank is a [cylinder lying horizontally](docs/cylinder-tank.png), diameter - 500mm, length - 1000mm, volume: ~197 liters
@@ -118,8 +125,16 @@ Single page app will display current device status as well will allow to configu
 
 ## Using make
 
-- make build
-- make localflash
+- make build 
+    - for building the project
+- make localflash 
+    - for flashing over a wire
+- make flash
+    - for OTA over http
+
+To change device name pass a DEVICE_ID option to make:
+
+DEVICE_ID=my_trinket make build
 
 ### Debug
 
@@ -132,6 +147,30 @@ According to the [docs](https://mongoose-os.com/docs/mongoose-os/userguide/debug
 - 4 VERBOSE_DEBUG
 
 There are two make targets - `debug_info` and `debug_debug` that will change the output in the logs 
+
+You can use UDP debug option by setting the option `debug.udp_log_addr` to an ip:port of a receiver, where you can capture
+the debug log using nc
+
+File debug.json
+```
+{
+  "config" : {
+     "debug": {
+       "udp_log_addr":"192.168.19.17:9966"
+     }
+  }
+}
+```
+
+Set over http
+```
+curl http://tanksensor2/rpc/config.set -d @debug.json
+```
+
+Capture debug output over IP network
+```
+nc -ul 9966
+```
 
 ## Some links
 

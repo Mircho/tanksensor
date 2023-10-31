@@ -1,8 +1,10 @@
 let tsWS = null;
+let rWS = null;
 
-const processWSData = (tsState) => {
+const processStatusWSData = (tsState) => {
   Object.entries(tsState).forEach(([key, value]) => {
-    const el = document.querySelector(`#${key}`);
+    const elId = key == 'timestamp' ? 'status-'+key : key;
+    const el = document.querySelector(`#${elId}`);
     if (el) {
       if (key == 'timestamp') {
         const tsDate = new Date(value * 1000);
@@ -20,11 +22,11 @@ const processWSData = (tsState) => {
 const connectToHostWS = () => {
   let reconnect = null;
   console.log('Connecting to: ', window.location.host);
-  tsWS = new WebSocket(`ws://${window.location.host}`);
+  tsWS = new WebSocket(`ws://${window.location.host}/status`);
   tsWS.addEventListener('message', (event) => {
     try {
       let tsState = JSON.parse(event.data);
-      processWSData(tsState);
+      processStatusWSData(tsState);
       console.log(tsState);
     } catch (e) {
       console.log('Error parsing data', e);
@@ -43,6 +45,34 @@ const connectToHostWS = () => {
     }
   })
 }
+
+const connectToHostRawWS = () => {
+  let reconnect = null;
+  console.log('Connecting to: ', window.location.host);
+  rWS = new WebSocket(`ws://${window.location.host}/raw`);
+  rWS.addEventListener('message', (event) => {
+    try {
+      let tsState = JSON.parse(event.data);
+      processStatusWSData(tsState);
+      console.log(tsState);
+    } catch (e) {
+      console.log('Error parsing data', e);
+    }
+  });
+  tsWS.addEventListener('close', (event) => {
+    console.log('WebSocket disconnect...');
+    if(reconnect == null) {
+      reconnect = setTimeout(connectToHostRawWS, 2000);
+    }
+  })
+  tsWS.addEventListener('error', (event) => {
+    console.log('WebSocket error...');
+    if(reconnect == null) {
+      reconnect = setTimeout(connectToHostRawWS, 2000);
+    }
+  })
+}
+
 
 let deviceConfig = null;
 
@@ -161,5 +191,6 @@ const loadDeviceConfig = async () => {
 
 window.addEventListener('load', (event) => {
   connectToHostWS();
+  connectToHostRawWS();
   loadDeviceConfig();
 })

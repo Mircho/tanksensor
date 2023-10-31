@@ -21,11 +21,14 @@ void on_tank_water_height_change(observable_value_t *this)
 {
   static float last_reported_liters = 0;
   float tank_water_height = this->value.value;
+
+  LOG(LL_INFO, ("Water height %f", tank_water_height));
+
   float tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1 - tank_water_height / tank_radius_cm) - (tank_radius_cm - tank_water_height) * sqrt(2 * tank_radius_cm * tank_water_height - pow(tank_water_height, 2)));
   tank_volume.tank_liters = tank_volume_cm3 / 1000.0;
   tank_volume.tank_percentage = tank_volume.tank_liters / tank_maximum_liters * 100.0;
   // decide if we need to report based on liters change
-  if( tank_volume.tank_liters - last_reported_liters > tank_liters_change_report_threshold ) {
+  if( fabs(tank_volume.tank_liters - last_reported_liters) > tank_liters_change_report_threshold ) {
     mgos_event_trigger(VOLUME_MEASUREMENT, &tank_volume);
     last_reported_liters = tank_volume.tank_liters;
   }
@@ -60,34 +63,29 @@ filter_item_linear_fit_t percentage_water_height_fit = {
     .slope_ = 0,
     .intercept_ = 0};
 
-static void pressure_cb(int ev, void *evd, void *user_data UNUSED_ARG)
+static void pressure_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
-  switch (ev)
-  {
-  case PRESSURE_MEASUREMENT:
-  {
-    pressure_status_t *pressure_status = evd;
-    LOG(LL_DEBUG, ("PRESSURE: value %d", pressure_status->raw_adc));
-    tank_water_height.process(&tank_water_height, pressure_status->raw_adc);
-    break;
-  }
-  default:
-    assert(0 && "We should never end up here");
-  }
+  if(ev != PRESSURE_MEASUREMENT) return;
+  pressure_status_t *pressure_status = evd;
+  tank_water_height.process(&tank_water_height, pressure_status->raw_adc);
 }
 
 void tank_volume_init(float pressure_low_threshold, float pressure_high_threshold)
 {
   // init variables and filters
-  pressure_percentage_fit.value_map[0][0] = 0;
-  pressure_percentage_fit.value_map[0][1] = pressure_low_threshold;
-  pressure_percentage_fit.value_map[1][0] = 100;
-  pressure_percentage_fit.value_map[1][1] = pressure_high_threshold;
+  pressure_percentage_fit.value_map[0][0] = pressure_low_threshold;
+  pressure_percentage_fit.value_map[0][1] = 0;
+  pressure_percentage_fit.value_map[1][0] = pressure_high_threshold;
+  pressure_percentage_fit.value_map[1][1] = 100;
+
+  filter_linear_fit_calc(&pressure_percentage_fit);
 
   percentage_water_height_fit.value_map[0][0] = 0;
   percentage_water_height_fit.value_map[0][1] = 0;
   percentage_water_height_fit.value_map[1][0] = 100;
   percentage_water_height_fit.value_map[1][1] = 2.0 * tank_radius_cm;
+
+  filter_linear_fit_calc(&percentage_water_height_fit);
 
   add_filter(&tank_water_height, (filter_item_t *)&pressure_percentage_fit);
   add_filter(&tank_water_height, (filter_item_t *)&clamp_percentage);
@@ -95,5 +93,5 @@ void tank_volume_init(float pressure_low_threshold, float pressure_high_threshol
 
   add_observer(&tank_water_height, on_tank_water_height_change);
 
-  mgos_event_add_group_handler(PRESSURE_EVENT_BASE, pressure_cb, NULL);
+  mgos_event_add_group_handler(PRESSURE_EVENT_BASE, pressure_volume_cb, NULL);
 }

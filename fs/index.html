@@ -32,19 +32,19 @@
           <tbody>
             <tr>
               <td>Liters of water</td>
-              <td id="tank_liters">150</td>
+              <td id="tank_liters">-</td>
             </tr>
             <tr>
               <td>Percentage full</td>
-              <td id="tank_percentage">63.4</td>
+              <td id="tank_percentage">-</td>
             </tr>
             <tr>
               <td>Status</td>
-              <td id="tank_status">Normal</td>
+              <td id="tank_status">-</td>
             </tr>
             <tr>
               <td>Overflow</td>
-              <td><kbd id="tank_overflow">No</kbd></td>
+              <td><kbd id="tank_overflow">-</kbd></td>
             </tr>
           </tbody>
         </table>
@@ -58,15 +58,15 @@
           <tbody>
             <tr>
               <td>Temperature</td>
-              <td id="air_temperature">21</td>
+              <td id="air_temperature">0.0</td>
             </tr>
             <tr>
               <td>Humidity</td>
-              <td id="air_humidity">63.4</td>
+              <td id="air_humidity">0.0</td>
             </tr>
             <tr>
               <td>Pressure</td>
-              <td id="air_pressure">97000</td>
+              <td id="air_pressure">0</td>
             </tr>
           </tbody>
         </table>
@@ -83,21 +83,17 @@
               <td id="tank_pressure_adc">400</td>
             </tr>
             <tr>
-              <td>Pressure precentage</td>
-              <td id="pressure_percentage">63.4</td>
-            </tr>
-            <tr>
               <td>Counter raw count</td>
-              <td id="counter_raw_count">180</td>
+              <td id="tank_overflow_count">180</td>
             </tr>
             <tr>
               <td>Counter frequency</td>
-              <td id="counter_frequency">90</td>
+              <td id="tank_overflow_frequency">90</td>
             </tr>
           </tbody>
         </table>
       </figure>
-    <footer>Last updated: <span id="timestamp"></span></footer>
+    <footer>Last updated status: <span id="status-timestamp"></span> raw data: <span id="raw-timestamp"></span></footer>
     </section>
     <section id="config-tank">
       <form id="config-tank-form" method="post">

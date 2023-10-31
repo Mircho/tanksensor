@@ -14,7 +14,8 @@
 static int pressure_adc_pin = -1;
 
 static mgos_timer_id adc_timer_id = MGOS_INVALID_TIMER_ID;
-static const int timer_period_ms = 40;
+static const int timer_period_ms = 50;
+static const size_t number_of_adc_samples = 100;
 
 static pressure_status_t pressure_status = {
     .raw_adc = 0};
@@ -29,6 +30,16 @@ observable_value_t pressure_adc = {
     .notify = notify_observers,
 };
 
+// average
+filter_item_average_t pressure_avg_filter = {
+    .super.filter = filter_item_average_fn,
+    .number_of_samples = number_of_adc_samples,
+    .sample_counter_ = number_of_adc_samples,
+    .accumulator_ = 0,
+    .pass_first = false
+};
+
+
 // moving average
 filter_item_exp_moving_average_t pressure_ma_filter = {
     .super.filter = filter_item_exp_moving_average_fn,
@@ -40,6 +51,7 @@ filter_item_exp_moving_average_t pressure_ma_filter = {
 
 static void pressure_result_callback(observable_value_t *this)
 {
+  LOG(LL_INFO, ("%s, Pressure result %d", TAG, (int)this->value.value));
   pressure_status.raw_adc = (int)this->value.value;
   mgos_event_trigger(PRESSURE_MEASUREMENT, &pressure_status);
 }
@@ -47,6 +59,7 @@ static void pressure_result_callback(observable_value_t *this)
 static void pressure_measurement_callback(void *ud)
 {
   int current_sample = mgos_adc_read(pressure_adc_pin);
+  LOG(LL_INFO, ("%s, Pressure adc value %d", TAG, current_sample));
   pressure_adc.process(&pressure_adc, current_sample);
 }
 
@@ -73,6 +86,7 @@ bool sensor_pressure_init()
 
   mgos_event_register_base(PRESSURE_EVENT_BASE, "Tank pressure events");
 
+  add_filter(&pressure_adc, (filter_item_t *)&pressure_avg_filter);
   add_filter(&pressure_adc, (filter_item_t *)&pressure_ma_filter);
   add_observer(&pressure_adc, pressure_result_callback);
 
