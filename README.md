@@ -2,15 +2,11 @@
 
 ## Overview
 
-A legacy water delivery system in the house I live in requires that a tank under the roof is to 
-be filled for the house to have enough water pressure. Instead of replacing the pump 
-and pressurizing the system I decided for retrofitting it with sensors.
+The residence where I currently live relies on an older water supply system that demands the filling of a rooftop tank to maintain adequate water pressure within the house. Rather than opting for the costly route of replacing the pump and pressurizing the entire system, I chose to enhance it by integrating sensors.
 
-HomeAssistant instance monitors the water level and turns on a pump by issueing a command to a Shelly Pro 1PM device. (btw Shellies have excellent support in HA)
+A HomeAssistant instance is responsible for monitoring water levels and activating a pump by sending commands to a Shelly Pro 1PM device (by the way, Shelly devices are exceptionally well-supported in HomeAssistant).
 
-An ESP32 based sesnsor node is used for monitoring tank water levels and overflow.
-
-As at the place of use I have various infrastructure instabilities I implemented an http endpoint on the Shelly for the sensor to publish to. HomeAssistant would still use MQTT for entity data source. But if HA (or rather the RPI Zero2 it runs on) becomes unavailable the Shelly and the sensor would still keep running the water works.
+To keep track of tank water levels and potential overflows, we employ an ESP32-based sensor node. Given the various infrastructure challenges in the area, I've implemented an HTTP endpoint on the Shelly device to facilitate communication with the sensor. Integration with HomeAssistant is done by defining MQTT sensors. This setup ensures that the Shelly and the sensor can continue to operate and manage the water supply even in situations where HomeAssistant (or the Raspberry Pi Zero2 it operates on) may become unavailable. A script running on the Shelly checks if HomeAssistant API is reachable and falls back to a direct mode if it isn't.
 
 ## Sensor node
 
@@ -30,7 +26,7 @@ FireBeetle ESP32 based and has the following sensors:
 
 The water tank is a [cylinder lying horizontally](docs/cylinder-tank.png), diameter - 500mm, length - 1000mm, volume: ~197 liters
 
-Tank physical size is hardcoded in the main.c
+Tank physical size is hardcoded in the tank_volume.c
 
 Formula for calculating tank volume given depth of water is known:
 
@@ -49,9 +45,9 @@ Firmware is based on [Mongoose OS](https://mongoose-os.com).
 
 ### Frequency counter
 
-For reporting frequency from the flow meter ESP32 RMT periphery and a sacrifical pin are used to control the input gate of the GPIO counter. There is no need for external periphery for this to run. Initialization and control happens in a separate FreeRTOS task for tighter timing.
+A GPIO pin is using the counting periphery. Precise gate timing is achieved using the RMT periphery, and this requires sacrificing a GPIO pin. Count results and reporting is handled in a separate FreeRTOS task.
 
-Additionally for testing the logic of the above LEDC periphery is used by redirecting it's output via the device multiplexing control to the same pin on which finally the external sensor will be attached. This functionality is optional and can be turned off by changing this line in `mos.yml`
+Additionally for testing the logic of the counter LEDC periphery is used by redirecting it's output via the device multiplexing control to the same counting GPIO pin on which the external sensor is attached. This functionality is optional and can be turned off by changing this line in `mos.yml`
 
 ```
 cflags:
@@ -60,15 +56,15 @@ cflags:
 
 ### Pressure measurement
 
-Provided that the pressure sensor can output from 0.5V to 4.5V for 0 to 5 psi [0 to 0.34 atm] and the maximum water column can be 0.5m e.g. 0.05atm of static pressure  (1 atm for every 10m of water) output of the sensor can not overshoot the maximum 3.3 V value for the ADC input. . When overflow occurs dynamic pressure will raise the readings but empirically established that will not overshoot.
+Provided that the pressure sensor can output from 0.5V to 4.5V for 0 to 5 psi [0 to 0.34 atm] and the maximum water column can be 0.5m e.g. 0.05atm of static pressure  (1 atm for every 10m of water) output of the sensor can not overshoot the maximum 3.3 V value for the ADC input. When overflow occurs dynamic pressure will raise above the maximum but empirically established that voltage will not overshoot.
 
-Not much is provided for hardware filtering thus oversampling and exponential moving averaging is applied to stabilize readings.
+Not much is provided for hardware filtering thus oversampling and exponential moving averaging is applied to stabilize reported readings.
 
 ## Reporting 
 ### Reporting channels
 
 - MQTT (configurable) topic device-id/status
-- Webhook (configurable) - http clinet on device will hit a webserver url (configurable)
+- Webhook (configurable) - http client on device will hit a web server url (configurable)
 - WebSocket
   - http://device-address/status - status for device
   - http://device-address/raw - raw values from adc pressure readings and counter
@@ -107,7 +103,7 @@ JSON containing raw tank status data readings from pressure and flow sensors
 
 ### Reporting strategy
 
-Any significant change in water volume or overflow status will cause a notification to be published on MQTT topic, over WebSocket and POST data to be sent to the HTTP WebHook URL.
+Any significant change in water volume or overflow status will cause a notification to be published on MQTT topic, over WebSocket and POST data to be sent if a HTTP WebHook URL is configured.
 
 ### Configuration
 
