@@ -96,39 +96,39 @@
     <footer>Last updated status: <span id="status-timestamp"></span> raw data: <span id="raw-timestamp"></span></footer>
     </section>
     <section id="config-tank">
-      <form id="config-tank-form" method="post">
-        <h2>Low and high thresholds of tank</h2>
-        <label for="tank-low-thr"
-        >Low threshold in liters <span id="tank-low-thr-value">0</span>
-        <input type="range" min="0" max="197" value="30" id="tank-low-thr" name="tank-low-thr" />
+      <form id="config-tank-form" method="post" action="/rpc/tank.setlimits">
+        <h2>Liters limits for empty and full status</h2>
+        <label for="tank.liters.low_threshold"
+        >Low threshold in liters <span>0</span>
+        <input type="range" min="0" max="197" value="30" id="tank.liters.low_threshold" name="low_thr" />
         </label>
-        <label for="tank-high-thr"
-        >High threshold in liters <span id="tank-high-thr-value">0</span>
-        <input type="range" min="0" max="197" value="150" id="tank-high-thr" name="tank-high-thr" />
+        <label for="tank.liters.high_threshold"
+        >High threshold in liters <span>0</span>
+        <input type="range" min="0" max="197" value="150" id="tank.liters.high_threshold" name="high_thr" />
         </label>
         <button type="submit" value="Save">Save</button>
       </form>
     </section>
     <section id="config-pressure">
-      <form id="config-pressure-form" method="post">
+      <form id="config-pressure-form" method="post" action="/rpc/pressure.setlimits">
         <h2>Low and high thresholds of pressure</h2>
-        <label for="pressure-low-thr"
-        >Low threshold in ADC <span id="pressure-low-thr-value">0</span>
-        <input type="range" min="0" max="4096" value="30" id="pressure-low-thr" name="pressure-low-thr" />
+        <label for="tank.adc_pressure.low_threshold"
+        >Low threshold in ADC <span>0</span>
+        <input type="range" min="0" max="4096" value="30" id="tank.adc_pressure.low_threshold" name="low_thr" />
         </label>
-        <label for="pressure-high-thr"
-        >High threshold in ADC <span id="pressure-high-thr-value">0</span>
-        <input type="range" min="0" max="4096" value="150" id="pressure-high-thr" name="pressure-high-thr" />
+        <label for="tank.adc_pressure.high_threshold"
+        >High threshold in ADC <span>0</span>
+        <input type="range" min="0" max="4096" value="150" id="tank.adc_pressure.high_threshold" name="high_thr" />
         </label>
         <button type="submit" value="Save">Save</button>
       </form>
     </section>
-    <section id="config-counter">
-      <form id="config-counter-form" method="post">
-        <h2>Counter threshold</h2>
-        <label for="counter-freq-thr"
-        >Counter frequency threshold <span id="counter-freq-thr-value">0</span>
-        <input type="text" value="30" id="counter-freq-thr" name="counter-freq-thr" />
+    <section id="config-frequency">
+      <form id="config-frequency-form" method="post" action="/rpc/counter.setlimits">
+        <h2>Overflow frequency threshold</h2>
+        <label for="tank.frequency.high_threshold"
+        >Counter frequency threshold <span>0</span>
+        <input type="text" value="20" id="tank.frequency.high_threshold" name="freq_thr" />
         </label>
         <button type="submit" value="Save">Save</button>
       </form>

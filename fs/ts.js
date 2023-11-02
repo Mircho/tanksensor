@@ -1,3 +1,47 @@
+class ReconnectingWS extends EventTarget {
+  _url = ""
+  _ws = null
+  _retryTime = 0
+  _retryTimeout = undefined
+  constructor(url, retryTime = 1000) {
+    super();
+    this._url = url;
+    this._retryTime = retryTime;
+    this.connect();
+  }
+  connect() {
+    this._ws = new WebSocket(this._url);
+    this._ws.addEventListener('open', ()=>{
+      this.dispatchEvent(new Event('open'));
+      if(this._retryTimeout) clearTimeout(this._retryTimeout);
+    });
+    this._ws.addEventListener('message', (message) => {
+      this.dispatchEvent(new CustomEvent('message', { detail: message }));
+    })
+    this._ws.addEventListener('close', ()=>{
+      this.dispatchEvent(new Event('close'));
+      this.scheduleConnect();
+    });
+    this._ws.addEventListener('error', ()=>{
+      this.dispatchEvent(new Event('error'));
+      this.scheduleConnect();
+    })
+  }
+  scheduleConnect() {
+    this._ws = null;
+    if(this._retryTimeout) clearTimeout(this._retryTimeout);
+    this._retryTimeout = setTimeout(()=>{
+      this.connect();
+    }, this._retryTime);
+  }
+  disconnect() {
+    this.ws?.close();
+  }
+}
+
+const statusWSURL = '/status';
+const rawDataWSURL = '/raw';
+
 let tsWS = null;
 let rWS = null;
 
@@ -16,6 +60,16 @@ const processStatusWSData = (tsState) => {
       }
       el.innerHTML = value;
     }
+  })
+}
+
+const connectWebSockets = () => {
+  const statusWS = new ReconnectingWS( statusWSURL, 1000 );
+  const rawDataWS = new ReconnectingWS( rawDataWSURL, 1000 );
+
+  statusWS.addEventListener( 'message', ({detail}) => {
+    const message = detail;
+    processStatusWSData(message);
   })
 }
 
@@ -75,6 +129,25 @@ const connectToHostRawWS = () => {
 
 
 let deviceConfig = null;
+
+const formHandler = async (event) => {
+  event.preventDefault();
+  const _form = event.target;
+  const _submitter = event.submitter;
+  _submitter.ariaBusy = "true";
+  const formData = new FormData(_form);
+  const postResults = await fetch(_form.action, {
+    method: _form.method,
+    cache: 'no-cache',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(Object.fromEntries(formData))
+  });
+  const postJSON = await postResults.json();
+  _submitter.ariaBusy = "false";
+  return postJSON;
+}
 
 const updateConfigForms = () => {
   if(deviceConfig == null) return;
