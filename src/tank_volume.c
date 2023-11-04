@@ -15,7 +15,7 @@ static const float tank_radius_cm = 25.0;
 static const float tank_length_cm = 100.0;
 static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 197.0;
-static const float tank_liters_change_report_threshold = 1.0;
+static const float tank_liters_change_report_threshold = 1.5;
 
 void on_tank_water_height_change(observable_value_t *this)
 {

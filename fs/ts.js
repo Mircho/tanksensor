@@ -10,13 +10,14 @@ class ReconnectingWS extends EventTarget {
     this.connect();
   }
   connect() {
+    console.log('Connecting to websocket at ', this._url);
     this._ws = new WebSocket(this._url);
     this._ws.addEventListener('open', ()=>{
       this.dispatchEvent(new Event('open'));
       if(this._retryTimeout) clearTimeout(this._retryTimeout);
     });
     this._ws.addEventListener('message', (message) => {
-      this.dispatchEvent(new CustomEvent('message', { detail: message }));
+      this.dispatchEvent(new CustomEvent('message', { detail: JSON.parse(message.data) }));
     })
     this._ws.addEventListener('close', ()=>{
       this.dispatchEvent(new Event('close'));
@@ -39,96 +40,42 @@ class ReconnectingWS extends EventTarget {
   }
 }
 
+const host = `${window.location.host}`;
 const statusWSURL = '/status';
 const rawDataWSURL = '/raw';
 
-let tsWS = null;
-let rWS = null;
-
-const processStatusWSData = (tsState) => {
-  Object.entries(tsState).forEach(([key, value]) => {
-    const elId = key == 'timestamp' ? 'status-'+key : key;
-    const el = document.querySelector(`#${elId}`);
+const processStatusWSData = (tsState, type='raw') => {
+  for(const [key, value] of Object.entries(tsState)) {
+    const elId = key;
+    let el = document.querySelector(`#${elId}`);
     if (el) {
-      if (key == 'timestamp') {
-        const tsDate = new Date(value * 1000);
-        const tsHoursStr = new String(tsDate.getHours());
-        const tsMinutesStr = new String(tsDate.getMinutes());
-        const tsSecondsStr = new String(tsDate.getSeconds());
-        el.innerHTML = tsHoursStr.padStart(2, '0') + ':' + tsMinutesStr.padStart(2, '0') + ':' + tsSecondsStr.padStart(2, '0');
-        return;
-      }
       el.innerHTML = value;
     }
-  })
+    if (key == 'timestamp') {
+      const tsDate = new Date(value * 1000);
+      const tsHoursStr = new String(tsDate.getHours());
+      const tsMinutesStr = new String(tsDate.getMinutes());
+      const tsSecondsStr = new String(tsDate.getSeconds());
+      el = document.querySelector(`#${type}-${elId}`);
+      el.innerHTML = tsHoursStr.padStart(2, '0') + ':' + tsMinutesStr.padStart(2, '0') + ':' + tsSecondsStr.padStart(2, '0');
+    }
+  }
 }
 
 const connectWebSockets = () => {
-  const statusWS = new ReconnectingWS( statusWSURL, 1000 );
-  const rawDataWS = new ReconnectingWS( rawDataWSURL, 1000 );
+  const statusWS = new ReconnectingWS( `ws://${host}${statusWSURL}`, 1000 );
+  const rawDataWS = new ReconnectingWS( `ws://${host}${rawDataWSURL}`, 1000 );
 
   statusWS.addEventListener( 'message', ({detail}) => {
     const message = detail;
-    processStatusWSData(message);
-  })
-}
-
-const connectToHostWS = () => {
-  let reconnect = null;
-  console.log('Connecting to: ', window.location.host);
-  tsWS = new WebSocket(`ws://${window.location.host}/status`);
-  tsWS.addEventListener('message', (event) => {
-    try {
-      let tsState = JSON.parse(event.data);
-      processStatusWSData(tsState);
-      console.log(tsState);
-    } catch (e) {
-      console.log('Error parsing data', e);
-    }
+    processStatusWSData(message, 'status');
   });
-  tsWS.addEventListener('close', (event) => {
-    console.log('WebSocket disconnect...');
-    if(reconnect == null) {
-      reconnect = setTimeout(connectToHostWS, 2000);
-    }
-  })
-  tsWS.addEventListener('error', (event) => {
-    console.log('WebSocket error...');
-    if(reconnect == null) {
-      reconnect = setTimeout(connectToHostWS, 2000);
-    }
-  })
-}
 
-const connectToHostRawWS = () => {
-  let reconnect = null;
-  console.log('Connecting to: ', window.location.host);
-  rWS = new WebSocket(`ws://${window.location.host}/raw`);
-  rWS.addEventListener('message', (event) => {
-    try {
-      let tsState = JSON.parse(event.data);
-      processStatusWSData(tsState);
-      console.log(tsState);
-    } catch (e) {
-      console.log('Error parsing data', e);
-    }
+  rawDataWS.addEventListener( 'message', ({detail}) => {
+    const message = detail;
+    processStatusWSData(message, 'raw');
   });
-  tsWS.addEventListener('close', (event) => {
-    console.log('WebSocket disconnect...');
-    if(reconnect == null) {
-      reconnect = setTimeout(connectToHostRawWS, 2000);
-    }
-  })
-  tsWS.addEventListener('error', (event) => {
-    console.log('WebSocket error...');
-    if(reconnect == null) {
-      reconnect = setTimeout(connectToHostRawWS, 2000);
-    }
-  })
 }
-
-
-let deviceConfig = null;
 
 const formHandler = async (event) => {
   event.preventDefault();
@@ -149,121 +96,43 @@ const formHandler = async (event) => {
   return postJSON;
 }
 
-const updateConfigForms = () => {
+const updateConfigForms = (deviceConfig) => {
   if(deviceConfig == null) return;
-  document.querySelector('#config-tank-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    event.submitter.ariaBusy = "true";
-    let formData = new FormData(event.target);
-    // console.log(formData);
-    let postData = {};
-    for(const item of formData) {
-      let key = item[0].replace('tank-','');
-      key = key.replace('-', '_');
-      postData[key] = parseFloat(item[1]);
-    };
-    let saveResult = await fetch(`http://${window.location.host}/rpc/tank.setlimits`, {
-      method: 'POST',
-      cache: 'no-cache',
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(postData)
-    });
-    let saveResultJSON = await saveResult.json();
-    event.submitter.ariaBusy = "false";
-    return saveResultJSON;
-  })
 
-  document.querySelector('#tank-low-thr').addEventListener('change', (event)=>{
-    document.querySelector('#tank-low-thr-value').textContent = event.target.value;
+  const inputs = document.querySelectorAll('input');
+
+  inputs.forEach((input) => {
+    const path = input.id.split('.');
+    let configItem = deviceConfig;
+    let idx = 0;
+    while(idx < path.length && configItem[path[idx]]) {
+      configItem = configItem[path[idx]];
+      idx++;
+    }
+    input.addEventListener('change', (event) => {
+      event.target.labels.forEach((label)=>{
+        const valueContainer = label.querySelector('span');
+        if(valueContainer) valueContainer.innerText = event.target.value;
+      })
+    })
+    input.value = configItem;
+    input.dispatchEvent(new Event('change'));
   });
-  document.querySelector('#tank-high-thr').addEventListener('change', (event)=>{
-    document.querySelector('#tank-high-thr-value').textContent = event.target.value;
+
+  const forms = document.querySelectorAll('form');
+
+  forms.forEach((form) => {
+    form.addEventListener('submit', formHandler);
   });
-  document.querySelector('#tank-low-thr').value = deviceConfig.tank.liters.low_threshold;
-  document.querySelector('#tank-low-thr').dispatchEvent(new Event('change'));
-  document.querySelector('#tank-high-thr').value = deviceConfig.tank.liters.high_threshold;
-  document.querySelector('#tank-high-thr').dispatchEvent(new Event('change'));
-
-
-  document.querySelector('#config-pressure-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    event.submitter.ariaBusy = "true";
-    let formData = new FormData(event.target);
-    // console.log(formData);
-    let postData = {};
-    for(const item of formData) {
-      let key = item[0].replace('pressure-','');
-      key = key.replace('-', '_');
-      postData[key] = parseFloat(item[1]);
-    };
-    let saveResult = await fetch(`http://${window.location.host}/rpc/pressure.setlimits`, {
-      method: 'POST',
-      cache: 'no-cache',
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(postData)
-    });
-    let saveResultJSON = await saveResult.json();
-    event.submitter.ariaBusy = "false";
-    return saveResultJSON;
-  })
-
-  document.querySelector('#pressure-low-thr').addEventListener('change', (event)=>{
-    document.querySelector('#pressure-low-thr-value').textContent = event.target.value;
-  });
-  document.querySelector('#pressure-high-thr').addEventListener('change', (event)=>{
-    document.querySelector('#pressure-high-thr-value').textContent = event.target.value;
-  });
-  document.querySelector('#pressure-low-thr').value = deviceConfig.tank.adc_pressure.low_threshold;
-  document.querySelector('#pressure-low-thr').dispatchEvent(new Event('change'));
-  document.querySelector('#pressure-high-thr').value = deviceConfig.tank.adc_pressure.high_threshold;
-  document.querySelector('#pressure-high-thr').dispatchEvent(new Event('change'));
-
-  document.querySelector('#config-counter-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    event.submitter.ariaBusy = "true";
-    let formData = new FormData(event.target);
-    // console.log(formData);
-    let postData = {};
-    for(const item of formData) {
-      let key = item[0].replace('counter-','');
-      key = key.replace('-', '_');
-      postData[key] = parseFloat(item[1]);
-    };
-    let saveResult = await fetch(`http://${window.location.host}/rpc/counter.setlimits`, {
-      method: 'POST',
-      cache: 'no-cache',
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(postData)
-    });
-    let saveResultJSON = await saveResult.json();
-    event.submitter.ariaBusy = "false";
-    return saveResultJSON;
-  })
-
-  document.querySelector('#counter-freq-thr').addEventListener('change', (event)=>{
-    document.querySelector('#counter-freq-thr-value').textContent = event.target.value;
-  });
-  document.querySelector('#counter-freq-thr').value = deviceConfig.tank.frequency.high_threshold;
-  document.querySelector('#counter-freq-thr').dispatchEvent(new Event('change'));
-
 }
-
 
 const loadDeviceConfig = async () => {
-  let config = await fetch(`http://${window.location.host}/rpc/config.get`)
-  deviceConfig = await config.json();
-  updateConfigForms();
-  console.log(deviceConfig);
+  let config = await fetch(`http://${host}/rpc/config.get`)
+  return await config.json();
 }
 
-window.addEventListener('load', (event) => {
-  connectToHostWS();
-  connectToHostRawWS();
-  loadDeviceConfig();
+window.addEventListener('load', async (event) => {
+  connectWebSockets();
+  const deviceConfig = await loadDeviceConfig();
+  updateConfigForms(deviceConfig);
 })
