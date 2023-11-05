@@ -1,5 +1,7 @@
 // #include "mgos_system.h"
 #include "mgos_timers.h"
+#include "mgos_bme280.h"
+
 #include "sensor_bme280.h"
 
 #define TAG "BME280 sensor"
