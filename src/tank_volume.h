@@ -14,3 +14,4 @@ typedef struct tank_volume {
 
 
 void tank_volume_init(float pressure_low_threshold, float pressure_high_threshold);
+void tank_volume_set_threshold(float pressure_low_threshold, float pressure_high_threshold);

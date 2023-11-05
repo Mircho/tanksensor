@@ -419,6 +419,7 @@ static void pressure_set_limits_handler(struct mg_rpc_request_info *ri, void *cb
     pressure_low_value = low_pressure_adc_val;
     pressure_high_value = high_pressure_adc_val;
     mg_rpc_send_responsef(ri, "{status:%B}", true);
+    tank_volume_set_threshold(pressure_low_value, pressure_high_value);
   }
   else
   {

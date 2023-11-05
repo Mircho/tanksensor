@@ -70,15 +70,20 @@ static void pressure_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
   tank_water_height.process(&tank_water_height, pressure_status->raw_adc);
 }
 
-void tank_volume_init(float pressure_low_threshold, float pressure_high_threshold)
+void tank_volume_set_threshold(float pressure_low_threshold, float pressure_high_threshold) 
 {
-  // init variables and filters
   pressure_percentage_fit.value_map[0][0] = pressure_low_threshold;
   pressure_percentage_fit.value_map[0][1] = 0;
   pressure_percentage_fit.value_map[1][0] = pressure_high_threshold;
   pressure_percentage_fit.value_map[1][1] = 100;
 
   filter_linear_fit_calc(&pressure_percentage_fit);
+}
+
+void tank_volume_init(float pressure_low_threshold, float pressure_high_threshold)
+{
+  // init variables and filters
+  tank_volume_set_threshold(pressure_low_threshold, pressure_high_threshold);
 
   percentage_water_height_fit.value_map[0][0] = 0;
   percentage_water_height_fit.value_map[0][1] = 0;
