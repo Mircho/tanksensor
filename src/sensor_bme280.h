@@ -2,7 +2,6 @@
 
 #include "stdbool.h"
 #include "mgos.h"
-#include "mgos_bme280.h"
 
 #define ENV_EVENT_BASE MGOS_EVENT_BASE('B', 'M', 'E')
 enum environment_sensor_event {
