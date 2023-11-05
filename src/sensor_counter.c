@@ -187,7 +187,6 @@ void frequency_count_teardown(void)
 void frequency_count_task_function(void *pvParameter)
 {
   int16_t pin_change_count;
-  double frequency_hz;
 
   int num_rmt_items = frequency_count_init();
   TickType_t last_wake_time_ticks = xTaskGetTickCount();
@@ -197,6 +196,7 @@ void frequency_count_task_function(void *pvParameter)
 
   while (true)
   {
+    double frequency_hz;
     // clear counter
     pcnt_counter_pause(pcnt_unit);
     pcnt_counter_clear(pcnt_unit);

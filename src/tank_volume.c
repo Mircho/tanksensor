@@ -20,11 +20,11 @@ static const float tank_liters_change_report_threshold = 1.5;
 void on_tank_water_height_change(observable_value_t *this)
 {
   static float last_reported_liters = 0;
-  float tank_water_height = this->value.value;
+  float tank_water_height_cm = this->value.value;
 
-  LOG(LL_INFO, ("Water height %f", tank_water_height));
+  LOG(LL_INFO, ("Water height %f", tank_water_height_cm));
 
-  float tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1 - tank_water_height / tank_radius_cm) - (tank_radius_cm - tank_water_height) * sqrt(2 * tank_radius_cm * tank_water_height - pow(tank_water_height, 2)));
+  float tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1 - tank_water_height_cm / tank_radius_cm) - (tank_radius_cm - tank_water_height_cm) * sqrt(2 * tank_radius_cm * tank_water_height_cm - pow(tank_water_height_cm, 2)));
   tank_volume.tank_liters = tank_volume_cm3 / 1000.0;
   tank_volume.tank_percentage = tank_volume.tank_liters / tank_maximum_liters * 100.0;
   // decide if we need to report based on liters change
