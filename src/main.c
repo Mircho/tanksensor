@@ -12,6 +12,7 @@
 #include "mgos_http_server.h"
 #include "mgos_rpc.h"
 #include "mgos_mqtt.h"
+#include "mgos_bme280.h"
 #include "mgos_neopixel.h"
 
 #include "sensor_bme280.h"
