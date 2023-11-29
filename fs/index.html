@@ -115,11 +115,11 @@
       <form id="config-pressure-form" method="post" action="/rpc/pressure.setlimits">
         <h2>Low and high thresholds of pressure</h2>
         <label for="tank.adc_pressure.low_threshold"
-        >Low threshold in ADC <span>0</span>
+        >Low threshold in temp compensated ADC <span>0</span>
         <input type="range" min="0" max="4096" value="30" id="tank.adc_pressure.low_threshold" name="low_thr" />
         </label>
         <label for="tank.adc_pressure.high_threshold"
-        >High threshold in ADC <span>0</span>
+        >High threshold in temp compensated ADC <span>0</span>
         <input type="range" min="0" max="4096" value="150" id="tank.adc_pressure.high_threshold" name="high_thr" />
         </label>
         <button type="submit" value="Save">Save</button>
