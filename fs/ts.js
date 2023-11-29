@@ -51,6 +51,10 @@ const processStatusWSData = (tsState, type='raw') => {
     if (el) {
       el.innerHTML = value;
     }
+    el = document.querySelector(`[${key}]`);
+    if(el) {
+      el.setAttribute(key,value);
+    }
     if (key == 'timestamp') {
       const tsDate = new Date(value * 1000);
       const tsHoursStr = new String(tsDate.getHours());

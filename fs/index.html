@@ -15,12 +15,14 @@
         padding-top: 0;
       }
     </style>
-    <script src="ts.js"></script>
 </head>
 <body>
   <main>
     <section id="status">
       <h2>Tank Status</h2>
+      <figure>
+        <canvas id="tank-visualization" width="300" height="200" tank_percentage="0"></canvas>
+      </figure>
       <figure>
         <table role="grid">
           <thead>
@@ -134,5 +136,7 @@
       </form>
     </section>
   </main>
+  <script src="ts.js"></script>
+  <script src="visualize.js"></script>
 </body>
 </html>

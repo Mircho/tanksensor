@@ -1,8 +1,10 @@
 #include "math.h"
 
 #include "mgos.h"
+#include "mgos_bme280.h"
 
 #include "sensor_pressure.h"
+#include "sensor_bme280.h"
 #include "tank_volume.h"
 #include "sensor.h"
 
@@ -16,6 +18,10 @@ static const float tank_length_cm = 100.0;
 static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 197.0;
 static const float tank_liters_change_report_threshold = 1.5;
+
+static const float temp_compensation_coeff = 6.33;
+
+static double env_temperature = 0.0;
 
 void on_tank_water_height_change(observable_value_t *this)
 {
@@ -63,11 +69,20 @@ filter_item_linear_fit_t percentage_water_height_fit = {
     .slope_ = 0,
     .intercept_ = 0};
 
+static void bme280_cb(int ev, void *evd, void *user_data UNUSED_ARG)
+{
+  if(ev != ENV_MEASUREMENT) return;
+  struct mgos_bme280_data *environment_status = evd;
+  env_temperature = environment_status->temp;
+}
+
 static void pressure_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
   if(ev != PRESSURE_MEASUREMENT) return;
   pressure_status_t *pressure_status = evd;
-  tank_water_height.process(&tank_water_height, pressure_status->raw_adc);
+  // do the temperature compensation of the pressure sensor raw adc
+  int compensated_adc = (int)((float)pressure_status->raw_adc - env_temperature * temp_compensation_coeff);
+  tank_water_height.process(&tank_water_height, compensated_adc);
 }
 
 void tank_volume_set_threshold(float pressure_low_threshold, float pressure_high_threshold) 
@@ -98,5 +113,6 @@ void tank_volume_init(float pressure_low_threshold, float pressure_high_threshol
 
   add_observer(&tank_water_height, on_tank_water_height_change);
 
+  mgos_event_add_group_handler(ENV_EVENT_BASE, bme280_cb, NULL);
   mgos_event_add_group_handler(PRESSURE_EVENT_BASE, pressure_volume_cb, NULL);
 }
