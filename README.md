@@ -1,5 +1,7 @@
 # Water tank monitoring sensor
 
+![Tank animation](./docs/tank_animation.mp4)
+
 ## Overview
 
 The residence where I currently live relies on an older water supply system that demands the filling of a rooftop tank to maintain adequate water pressure within the house. Rather than opting for the costly route of replacing the pump and pressurizing the entire system, I chose to enhance it by integrating sensors.
