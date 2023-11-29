@@ -85,8 +85,8 @@ config_schema:
   - ["webhook.url", "s", "http://thisdoesnotexist.local/test", {title: "url to post to"}]
   #
   - ["tank", "o", {title: "Tank configuration, cylinder"}]
-  - ["tank.adc_pressure.low_threshold", "i", 365, {title: "Low threshold of ADC pressure reading"}]
-  - ["tank.adc_pressure.high_threshold", "i", 545, {title: "High threshold of ADC pressure reading"}]
+  - ["tank.adc_pressure.low_threshold", "i", 364, {title: "Low threshold of ADC pressure reading"}]
+  - ["tank.adc_pressure.high_threshold", "i", 544, {title: "High threshold of ADC pressure reading"}]
   - ["tank.liters.low_threshold", "f", 80, {title: "Low threshold in liters"}]
   - ["tank.liters.high_threshold", "f", 180, {title: "High threshold in liters"}]
   - ["tank.frequency.high_threshold", "i", 20, {title: "High threshold of frequency; defines overflow"}]

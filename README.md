@@ -1,8 +1,6 @@
 # Water tank monitoring sensor
 
-<div align="center">
-  <video src="./docs/tank_animation.mp4" width="300"/>
-</div>
+![](./docs/tank_animation.gif)
 
 ## Overview
 
