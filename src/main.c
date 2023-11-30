@@ -31,7 +31,7 @@ enum WS_ENDPOINTS
 };
 
 // notify timer
-static const int notify_timer_period_msec = 5000;
+static const int notify_timer_period_msec = 3000;
 static mgos_timer_id notify_timer_id = MGOS_INVALID_TIMER_ID;
 
 // tank volume
@@ -236,14 +236,16 @@ static void notify_listeners(notify_type_t notify_reason)
   struct mbuf response_buffer __attribute__((__cleanup__(cleanup_mbuf)));
   struct mbuf response_raw_buffer __attribute__((__cleanup__(cleanup_mbuf)));
 
-  static time_t last_notify_timer;
+  static time_t last_notify_timestamp;
 
-  mgos_clear_timer(notify_timer_id);
+  if(notify_reason != NOTIFY_RAW) {
+    mgos_clear_timer(notify_timer_id);
+  }
 
-  if(last_notify_timer == sensor_info.timestamp) {
+  if(last_notify_timestamp == sensor_info.timestamp) {
     sensor_info.timestamp = time(NULL);
   }
-  last_notify_timer = sensor_info.timestamp;
+  last_notify_timestamp = sensor_info.timestamp;
 
   mbuf_init(&response_buffer, 1024);
   getSatusAsJSON(&response_buffer);
