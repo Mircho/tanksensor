@@ -46,7 +46,7 @@ filter_item_exp_moving_average_t pressure_ma_filter = {
     .initialized = false,
     .previous_value = 0,
     .alpha = 0.8,
-    .pass_first = true
+    .pass_first = false
 };
 
 static void pressure_result_callback(observable_value_t *this)

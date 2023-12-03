@@ -16,8 +16,8 @@ static tank_volume_t tank_volume = {
 static const float tank_radius_cm = 25.0;
 static const float tank_length_cm = 100.0;
 static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
-static const float tank_maximum_liters = 197.0;
-static const float tank_liters_change_report_threshold = 1.5;
+static const float tank_maximum_liters = 196.3;
+static const float tank_liters_change_report_threshold = 1.8;
 
 static const float temp_compensation_coeff = 5.55;
 
@@ -34,10 +34,10 @@ void on_tank_water_height_change(observable_value_t *this)
   tank_volume.tank_liters = tank_volume_cm3 / 1000.0;
   tank_volume.tank_percentage = tank_volume.tank_liters / tank_maximum_liters * 100.0;
   // decide if we need to report based on liters change
-  if( fabs(tank_volume.tank_liters - last_reported_liters) > tank_liters_change_report_threshold ) {
-    mgos_event_trigger(VOLUME_MEASUREMENT, &tank_volume);
-    last_reported_liters = tank_volume.tank_liters;
-  }
+  if( tank_volume.tank_percentage < 100.0 && (tank_volume.tank_liters - last_reported_liters) < tank_liters_change_report_threshold ) return;
+
+  mgos_event_trigger(VOLUME_MEASUREMENT, &tank_volume);
+  last_reported_liters = tank_volume.tank_liters;
 }
 
 static observable_value_t tank_water_height = {
