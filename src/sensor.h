@@ -53,6 +53,15 @@ struct filter_item_average
   bool pass_first;
 };
 
+typedef struct filter_item_harmonic_average filter_item_harmonic_average_t;
+struct filter_item_harmonic_average
+{
+  filter_item_t super;
+  size_t number_of_samples;
+  size_t sample_counter_;
+  number_type accumulator_;
+  bool pass_first;
+};
 
 // provide two points like value_map[0] = {500,0}, value_map[1] = {680,100}
 typedef struct filter_item_linear_fit filter_item_linear_fit_t;
@@ -190,6 +199,13 @@ struct observable_value
 
 #define FILTER_AVERAGE(filter_name, number_of_samples_val, pass_first_val) \
   FILTER(filter_name, average);                                            \
+  filter_name.number_of_samples = number_of_samples_val;                   \
+  filter_name.sample_counter_ = number_of_samples_val;                     \
+  filter_name.accumulator_ = 0;                                            \
+  filter_name.pass_first = pass_first_val;
+
+#define FILTER_HARMONIC_AVERAGE(filter_name, number_of_samples_val, pass_first_val) \
+  FILTER(filter_name, harmonic_average);                                            \
   filter_name.number_of_samples = number_of_samples_val;                   \
   filter_name.sample_counter_ = number_of_samples_val;                     \
   filter_name.accumulator_ = 0;                                            \

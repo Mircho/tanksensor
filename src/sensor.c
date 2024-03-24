@@ -106,6 +106,22 @@ filter_ret_val_t filter_item_average_fn(filter_item_t *this, observable_number_t
   return FILTER_CONTINUE;
 }
 
+filter_ret_val_t filter_item_harmonic_average_fn(filter_item_t *this, observable_number_t *var)
+{
+  filter_item_harmonic_average_t *fi = (filter_item_harmonic_average_t *)this;
+  assert(fi->number_of_samples > 0);
+  fi->accumulator_ += 1/var->value;
+  fi->sample_counter_--;
+  if (fi->sample_counter_ > 0)
+    return FILTER_STOP;
+
+  var->value = fi->number_of_samples / fi->accumulator_;
+  fi->accumulator_ = 0;
+  fi->sample_counter_ = fi->number_of_samples;
+
+  return FILTER_CONTINUE;
+}
+
 bool filter_linear_fit_calc(filter_item_linear_fit_t *this)
 {
   if(this->value_map[0][0] == this->value_map[1][0]) {
