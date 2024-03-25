@@ -15,7 +15,7 @@ static int pressure_adc_pin = -1;
 
 static mgos_timer_id adc_timer_id = MGOS_INVALID_TIMER_ID;
 static const int timer_period_ms = 50;
-static const size_t number_of_adc_samples = 100;
+static const size_t number_of_adc_samples = 50;
 
 static pressure_status_t pressure_status = {
     .raw_adc = 0};
@@ -31,7 +31,7 @@ observable_value_t pressure_adc = {
 };
 
 // average
-filter_item_average_t pressure_avg_filter = {
+filter_item_harmonic_average_t pressure_avg_filter = {
     .super.filter = filter_item_average_fn,
     .number_of_samples = number_of_adc_samples,
     .sample_counter_ = number_of_adc_samples,

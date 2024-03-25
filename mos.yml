@@ -31,10 +31,9 @@ filesystem:
 #
 build_vars:
   FREQUENCY_TEST_MODE: 2
-  ESP_IDF_EXTRA_COMPONENTS: "${build_vars.ESP_IDF_EXTRA_COMPONENTS} pcnt rmt"
-  ESP_IDF_SDKCONFIG_OPTS: >
-    ${build_vars.ESP_IDF_SDKCONFIG_OPTS} CONFIG_FLASHMODE_QIO=y CONFIG_FLASHFREQ_80M=y
-
+  ESP_IDF_EXTRA_COMPONENTS: " pcnt rmt"
+  ESP_IDF_SDKCONFIG_OPTS: >2
+     CONFIG_FLASHMODE_QIO=y CONFIG_FLASHFREQ_80M=y
 #
 cflags:
   - "-DFREQUENCY_TEST_MODE=0"
@@ -43,25 +42,25 @@ config_schema:
   - ["debug.udp_log_addr", "192.168.19.183:9966"]
   #
   - ["dns_sd.enable", true]
-  - ["dns_sd.host_name", "tanksensor2"]
+  - ["dns_sd.host_name", !secret "DEVICE_ID"] # DEVICE_ID
   - ["dns_sd.txt", "version=2"]
   #
   - ["wifi.sta_connect_timeout", 30]
   - ["wifi.sta_cfg_idx", 0]
   #
   - ["wifi.sta.enable", true]
-  - ["wifi.sta.ssid", "linux-bg.org"]
-  - ["wifi.sta.pass", "@tl@nt@2"]
-  - ["wifi.sta.dhcp_hostname", "tanksensor2"]
+  - ["wifi.sta.ssid", !secret "WIFI1SSID"] # WIFI1SSID
+  - ["wifi.sta.pass", !secret "WIFI1PASS"] # WIFI1PASS
+  - ["wifi.sta.dhcp_hostname", !secret "DEVICE_ID"] # DEVICE_ID
   #
   - ["wifi.sta1.enable", true]
-  - ["wifi.sta1.ssid", "iotE"]
-  - ["wifi.sta1.pass", "delirium"]
-  - ["wifi.sta1.dhcp_hostname", "tanksensor2"]
+  - ["wifi.sta1.ssid", !secret "WIFI2SSID"] # WIFI2SSID
+  - ["wifi.sta1.pass", !secret "WIFI2PASS"] # WIFI2PASS
+  - ["wifi.sta1.dhcp_hostname", !secret "DEVICE_ID"] # DEVICE_ID
   #
   - ["wifi.ap.enable", false]
-  - ["wifi.ap.ssid", "tanksensor2_??????"]
-  - ["wifi.ap.pass", "prasetosalam"]
+  - ["wifi.ap.ssid", !secret "APSSID"] # APSSID
+  - ["wifi.ap.pass", !secret "APPASS"] # APPASS
   #
   - ["i2c", "o", {title: "I2C settings"}]
   - ["i2c.unit_no", "i", 1, {title: "Which hardware unit to use, 0 or 1"}]
@@ -71,7 +70,7 @@ config_schema:
   - ["i2c.scl_gpio", "i", 22, {title: "GPIO to use for SCL"}]
   #
   - ["mqtt.enable", "b", true, {title: "Enable MQTT"}]
-  - ["mqtt.server", "s", "homeassistant:1883", {title: "MQTT server"}]
+  - ["mqtt.server", "s", "epi4:1883", {title: "MQTT server"}]
   - ["mqtt.reconnect_timeout_min", "d", 2.0, {title: "Starting reconnect timeout"}]
   - ["mqtt.reconnect_timeout_max", "d", 60.0, {title: "Maximum reconnect timeout"}]
   #
@@ -89,7 +88,7 @@ config_schema:
   - ["tank.adc_pressure.high_threshold", "i", 605, {title: "High threshold of ADC pressure reading"}]
   - ["tank.liters.low_threshold", "f", 80, {title: "Low threshold in liters"}]
   - ["tank.liters.high_threshold", "f", 180, {title: "High threshold in liters"}]
-  - ["tank.frequency.high_threshold", "i", 20, {title: "High threshold of frequency; defines overflow"}]
+  - ["tank.frequency.high_threshold", "i", 15, {title: "High threshold of frequency; defines overflow"}]
   #
   - ["board", "o", {title: "Board configuration"}]
   - ["board.led.pin", "i", 2, {title: "LED GPIO pin"}]

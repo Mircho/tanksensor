@@ -2,5 +2,6 @@ build/*
 deps/*
 wasi/*
 temp/*
+.env
 .vscode
 secrets.yml
