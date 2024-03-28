@@ -6,16 +6,14 @@
  *  https://esp32.com/viewtopic.php?t=4953&start=10
  */
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/queue.h"
+#include "sensor_counter.h"
+
+#include "mgos_freertos.h"
 #include "esp_system.h"
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/pcnt.h"
 #include "driver/rmt.h"
-
-#include "sensor_counter.h"
 
 //can be disabled in mos.yml by setting the var to != 1
 #if FREQUENCY_TEST_MODE==1
@@ -250,7 +248,7 @@ bool sensor_counter_start()
 {
   if (frequency_task_handle != NULL)
     return false;
-  BaseType_t task_create_result = xTaskCreate(frequency_count_task_function, "frequency_count", 4096, NULL, 5, &frequency_task_handle);
+  BaseType_t task_create_result = xTaskCreate(frequency_count_task_function, "frequency_count", 4096, NULL, MGOS_TASK_PRIORITY-1, &frequency_task_handle);
 
   if (task_create_result == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY)
     return false;

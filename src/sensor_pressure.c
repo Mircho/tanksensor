@@ -39,7 +39,6 @@ filter_item_harmonic_average_t pressure_avg_filter = {
     .pass_first = false
 };
 
-
 // moving average
 filter_item_exp_moving_average_t pressure_ma_filter = {
     .super.filter = filter_item_exp_moving_average_fn,
