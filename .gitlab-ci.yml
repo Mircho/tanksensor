@@ -7,10 +7,9 @@ build:
   variables:
     TARGET: 'Tanksensor2'
   script:
-    - 'echo "Starting building the project using makefile"'
-    - 'echo "Copy secrets"'
-    - 'cp /home/gitlab-runner/secrets/tanksensor/secrets.yml secrets.yml'
-    - 'TARGET="${TARGET}" make build'
+    - 'echo "Starting building the project using justfile"'
+    - 'cp /home/gitlab-runner/secrets/tanksensor/.env .'
+    - 'TARGET="${TARGET}" just build'
   artifacts:
     paths:
       - build/fw.zip
