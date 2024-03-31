@@ -8,7 +8,7 @@ build:
     TARGET: 'Tanksensor2'
   script:
     - 'echo "Starting building the project using justfile"'
-    - 'cp /home/gitlab-runner/secrets/tanksensor/.env .'
+    - 'cp /opt/gitla-runner/.env .'
     - 'TARGET="${TARGET}" just build'
   artifacts:
     paths:
