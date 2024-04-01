@@ -1,6 +1,7 @@
 stages:
   - build
   - upload
+  - deploy
 
 build:
   stage: build
@@ -29,5 +30,5 @@ deploy_to_tanksensor:
     - build
   stage: deploy
   when: manual
-  envioronment:
-    device_address: tanksensor2
+  script:
+    - 'ls build/fw.zip'
