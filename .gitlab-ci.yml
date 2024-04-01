@@ -1,4 +1,4 @@
-import: ~/system/system/gitlab/tanksensor-deploy.yml
+include: ~/system/system/gitlab/tanksensor-deploy.yml
 stages:
   - build
   - upload
