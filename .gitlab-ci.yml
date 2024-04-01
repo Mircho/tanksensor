@@ -31,4 +31,4 @@ deploy_to_tanksensor:
   stage: deploy
   when: manual
   script:
-    - 'ls build/fw.zip'
+    - 'curl -v -F file=@build/fw.zip http://tanksensor2/update'

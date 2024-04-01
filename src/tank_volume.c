@@ -19,7 +19,7 @@ static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 196.3;
 static const float tank_liters_change_report_threshold = 1.8;
 
-static const float temp_compensation_coeff = 5.55;
+static const float temp_compensation_coeff = 4.35; //5.55
 
 static double env_temperature = 0.0;
 
