@@ -16,7 +16,7 @@ build:
       - build/fw.zip
     expire_in: 1 month
     expose_as: 'firmware'
-    report:
+    reports:
       dotenv: .env
   rules:
     - if: '$CI_COMMIT_BRANCH == "master"'
