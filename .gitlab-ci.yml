@@ -5,6 +5,7 @@ stages:
 
 variables:
   MOS_ARTIFACT: "build/fw.zip"
+  FIRMWARE_FILE: "fw.zip"
 
 .branch-rules:
   rules:
@@ -20,9 +21,11 @@ build:
     - 'echo "Starting building the project using justfile"'
     - 'cp /opt/gitlab-runner/tanksensor/.env .'
     - 'TARGET="${TARGET}" just build'
+    - 'mv ${MOS_ARTIFACT} .'
   artifacts:
+    name: 'firmware'
     paths:
-      - build/fw.zip
+      - $FIRMWARE_FILE
     expire_in: 1 month
     expose_as: 'firmware'
     reports:
@@ -32,7 +35,7 @@ upload:
   stage: upload
   script:
     - 'pwd'
-    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $MOS_ARTIFACT "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}-firmware-${CI_COMMIT_SHORT_SHA}/latest/fw.zip"'
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $FIRMWARE_FILE "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}-firmware-${CI_COMMIT_SHORT_SHA}/latest/fw.zip"'
 
 deploy_to_tanksensor:
   dependencies:
@@ -40,4 +43,4 @@ deploy_to_tanksensor:
   stage: deploy
   when: manual
   script:
-    - 'curl -v -F file=@${MOS_ARTIFACT} http://${DEVICE_ID}/update'
+    - 'curl -v -F file=@${FIRMWARE_FILE} http://${DEVICE_ID}/update'
