@@ -3,7 +3,16 @@ stages:
   - upload
   - deploy
 
+variables:
+  MOS_ARTIFACT: "build/fw.zip"
+
+.branch-rules:
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
 build:
+  extends:
+    - .branch-rules
   stage: build
   variables:
     TARGET: 'Tanksensor2'
@@ -18,14 +27,12 @@ build:
     expose_as: 'firmware'
     reports:
       dotenv: .env
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
 
 upload:
   stage: upload
   script:
     - 'pwd'
-    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file build/fw.zip "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}-firmware-${CI_COMMIT_SHORT_SHA}/latest/fw.zip"'
+    - 'curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file $MOS_ARTIFACT "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${CI_PROJECT_NAME}-firmware-${CI_COMMIT_SHORT_SHA}/latest/fw.zip"'
 
 deploy_to_tanksensor:
   dependencies:
@@ -33,4 +40,4 @@ deploy_to_tanksensor:
   stage: deploy
   when: manual
   script:
-    - 'curl -v -F file=@build/fw.zip http://${DEVICE_ID}/update'
+    - 'curl -v -F file=@${MOS_ARTIFACT} http://${DEVICE_ID}/update'
