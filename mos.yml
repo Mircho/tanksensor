@@ -40,7 +40,7 @@ cflags:
   - "-DFREQUENCY_TEST_MODE=0"
 #
 config_schema:
-  - ["debug.udp_log_addr", "192.168.19.183:9966"]
+  - ["debug.udp_log_addr", "192.168.2.31:9966"]
   #
   - ["dns_sd.enable", true]
   - ["dns_sd.host_name", !secret "DEVICE_ID"] # DEVICE_ID

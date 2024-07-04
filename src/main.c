@@ -228,6 +228,44 @@ static void notify_timer_callback(void *ud)
   notify_listeners(NOTIFY_TIMER);
 }
 
+static void wh_ev_handler(struct mg_connection *c, int ev, void *p, void *user_data)
+{
+  bool *connection_active = (bool *)user_data;
+	switch (ev) {
+	case MG_EV_CONNECT:
+		if (*(int *) p != 0) {
+      *connection_active = false;
+      LOG(LL_INFO, ("Error connecting to webhook url"));
+    } else {
+      LOG(LL_INFO, ("Connected to webhook url"));
+    }
+		break;
+	case MG_EV_HTTP_REPLY:
+		c->flags |= (MG_F_CLOSE_IMMEDIATELY);
+    LOG(LL_INFO, ("Webhook response received, closing"));
+		break;
+	case MG_EV_CLOSE:
+    *connection_active = false;
+    LOG(LL_INFO, ("Webhook connection closed"));
+		break;
+	default:
+		break;
+	}
+}
+
+static void notify_webhook(const char *webhook_url, char *post_data)
+{
+  static bool http_client_active = false;
+  if(http_client_active == true) {
+    LOG(LL_INFO, ("HTTP client in flight. Skipping notification"));
+    return;
+  }
+  struct mg_mgr *mgr = mgos_get_mgr();
+  if(webhook_url == NULL) return;
+  http_client_active = true;
+  mg_connect_http(mgr, wh_ev_handler, (void *)&http_client_active, webhook_url, NULL, post_data);
+}
+
 // notify over mqtt, websocket and webhooks (status only)
 static void notify_listeners(notify_type_t notify_reason)
 {
@@ -289,26 +327,10 @@ static void notify_listeners(notify_type_t notify_reason)
   if (webhook_url == NULL) goto notify_out;
   LOG(LL_INFO, ("Notify WebHook URL:  %s", webhook_url));
 
-  void webhook_handler(struct mg_connection * c, int ev, void *evd,
-                      void *cb_arg)
-  {
-    switch (ev)
-    {
-    case MG_EV_CLOSE /* constant-expression */:
-      /* code */
-      break;
-    case MG_EV_TIMER /* handle timeouts */:
-      LOG(LL_INFO, ("Webhook timed out!"));
-      break;
-    default:
-      break;
-    }
-  }
-
   char *post_data __attribute__ ((__cleanup__(cleanup_post_data))) = malloc(response_buffer.len + 1);
   strncpy(post_data, response_buffer.buf, response_buffer.len);
   post_data[response_buffer.len] = '\0';
-  mg_connect_http(mgr, webhook_handler, NULL, mgos_sys_config_get_webhook_url(), JSON_HEADERS, post_data);
+  notify_webhook(webhook_url, post_data);
 
   notify_out:
 #endif
