@@ -19,7 +19,8 @@ static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 196.3;
 static const float tank_liters_change_report_threshold = 1.8;
 
-static const float temp_compensation_coeff = 4.35; //5.55
+static const float temp_compensation_coeff_below_10 = 4.35; //5.55
+static const float temp_compensation_coeff_above_10 = 3.3;
 
 static double env_temperature = 0.0;
 
@@ -30,7 +31,7 @@ void on_tank_water_height_change(observable_value_t *this)
 
   LOG(LL_INFO, ("Water height %f", tank_water_height_cm));
 
-  float tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1 - tank_water_height_cm / tank_radius_cm) - (tank_radius_cm - tank_water_height_cm) * sqrt(2 * tank_radius_cm * tank_water_height_cm - pow(tank_water_height_cm, 2)));
+  float tank_volume_cm3 = tank_length_cm * (tank_radius_squared_cm2 * acos(1.0 - tank_water_height_cm / tank_radius_cm) - (tank_radius_cm - tank_water_height_cm) * sqrt(2.0 * tank_radius_cm * tank_water_height_cm - pow(tank_water_height_cm, 2)));
   tank_volume.tank_liters = tank_volume_cm3 / 1000.0;
   tank_volume.tank_percentage = tank_volume.tank_liters / tank_maximum_liters * 100.0;
   // decide if we need to report based on liters change
@@ -81,7 +82,13 @@ static void pressure_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
   if(ev != PRESSURE_MEASUREMENT) return;
   pressure_status_t *pressure_status = evd;
   // do the temperature compensation of the pressure sensor raw adc
+  float temp_compensation_coeff = temp_compensation_coeff_below_10;
+  if(env_temperature > 10.0) temp_compensation_coeff = temp_compensation_coeff_above_10;
   int compensated_adc = (int)((float)pressure_status->raw_adc - env_temperature * temp_compensation_coeff);
+  LOG(LL_INFO, ("Raw adc %d", pressure_status->raw_adc));
+  LOG(LL_INFO, ("Compensated adc %d", compensated_adc));
+  LOG(LL_INFO, ("ENV temperature %f", env_temperature));
+
   tank_water_height.process(&tank_water_height, compensated_adc);
 }
 

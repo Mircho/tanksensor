@@ -43,25 +43,25 @@ config_schema:
   - ["debug.udp_log_addr", "192.168.2.31:9966"]
   #
   - ["dns_sd.enable", true]
-  - ["dns_sd.host_name", !secret "DEVICE_ID"] # DEVICE_ID
+  - ["dns_sd.host_name", "tanksensor2"] # DEVICE_ID
   - ["dns_sd.txt", "version=2"]
   #
   - ["wifi.sta_connect_timeout", 30]
   - ["wifi.sta_cfg_idx", 0]
   #
   - ["wifi.sta.enable", true]
-  - ["wifi.sta.ssid", !secret "WIFI1SSID"] # WIFI1SSID
-  - ["wifi.sta.pass", !secret "WIFI1PASS"] # WIFI1PASS
-  - ["wifi.sta.dhcp_hostname", !secret "DEVICE_ID"] # DEVICE_ID
+  - ["wifi.sta.ssid", "iotE"] # WIFI1SSID
+  - ["wifi.sta.pass", "delirium"] # WIFI1PASS
+  - ["wifi.sta.dhcp_hostname", "tanksensor2"] # DEVICE_ID
   #
   - ["wifi.sta1.enable", true]
-  - ["wifi.sta1.ssid", !secret "WIFI2SSID"] # WIFI2SSID
-  - ["wifi.sta1.pass", !secret "WIFI2PASS"] # WIFI2PASS
-  - ["wifi.sta1.dhcp_hostname", !secret "DEVICE_ID"] # DEVICE_ID
+  - ["wifi.sta1.ssid", "linux-bg.org"] # WIFI2SSID
+  - ["wifi.sta1.pass", "@tl@nt@2"] # WIFI2PASS
+  - ["wifi.sta1.dhcp_hostname", "tanksensor2"] # DEVICE_ID
   #
   - ["wifi.ap.enable", false]
-  - ["wifi.ap.ssid", !secret "APSSID"] # APSSID
-  - ["wifi.ap.pass", !secret "APPASS"] # APPASS
+  - ["wifi.ap.ssid", "tanksensor2_??????"] # APSSID
+  - ["wifi.ap.pass", "12345678"] # APPASS
   #
   - ["i2c", "o", {title: "I2C settings"}]
   - ["i2c.unit_no", "i", 1, {title: "Which hardware unit to use, 0 or 1"}]

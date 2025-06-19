@@ -37,6 +37,9 @@ set-webhook webhook:
   mos call config.set '{"config":{"webhook":{"url":"{{webhook}}"}}}' --port http://$DEVICE_ID/rpc
   mos call config.save --port http://$DEVICE_ID/rpc
 
+config:
+  mos --port http://$DEVICE_ID/rpc config-get
+
 setup-debug-udp:
   mos --port http://$DEVICE_ID/rpc config-set debug.udp_log_addr={{UDP_DEBUG_ADDR}}
 
