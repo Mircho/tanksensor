@@ -1,4 +1,5 @@
 #include "sensor_calibration.h"
+#include "mgos_bme280.h"
 #include "sensor_bme280.h"
 #include "sensor_pressure.h"
 
