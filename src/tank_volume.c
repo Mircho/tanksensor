@@ -19,8 +19,10 @@ static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 196.3;
 static const float tank_liters_change_report_threshold = 3;
 
-static const float temp_compensation_coeff_below_10 = 4.35; //5.55
-static const float temp_compensation_coeff_above_10 = 3.3;
+// derived from 720-point linear regression over 12h of stable water level data
+// (temp range 0.1–20.8 °C, R²=0.991): raw_adc = 2.8431 * T + 571.34
+static const float temp_compensation_slope = 2.8431f;
+static const float temp_compensation_intercept = 0.0f;
 
 static double env_temperature = 0.0;
 
@@ -81,10 +83,7 @@ static void pressure_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
   if(ev != PRESSURE_MEASUREMENT) return;
   pressure_status_t *pressure_status = evd;
-  // do the temperature compensation of the pressure sensor raw adc
-  float temp_compensation_coeff = temp_compensation_coeff_below_10;
-  if(env_temperature > 10.0) temp_compensation_coeff = temp_compensation_coeff_above_10;
-  int compensated_adc = (int)((float)pressure_status->raw_adc - env_temperature * temp_compensation_coeff);
+  int compensated_adc = (int)((float)pressure_status->raw_adc - (temp_compensation_slope * env_temperature + temp_compensation_intercept));
   LOG(LL_INFO, ("Raw adc %d", pressure_status->raw_adc));
   LOG(LL_INFO, ("Compensated adc %d", compensated_adc));
   LOG(LL_INFO, ("ENV temperature %f", env_temperature));
