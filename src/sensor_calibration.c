@@ -60,14 +60,15 @@ static void accumulate(float temp, float adc) {
 
   bool was_ready = cal_status.ready;
 
-  cal_status.slope     = (float)slope;
-  cal_status.r2        = (float)r2;
-  cal_status.n_samples = (int)sn;
-  cal_status.temp_min  = t_min;
-  cal_status.temp_max  = t_max;
-  cal_status.ready     = (t_max - t_min >= MIN_TEMP_SWING)
-                       && (r2 >= MIN_R2)
-                       && (sn >= MIN_SAMPLES);
+  cal_status.slope        = (float)slope;
+  cal_status.r2           = (float)r2;
+  cal_status.n_samples    = (int)sn;
+  cal_status.temp_min     = t_min;
+  cal_status.temp_max     = t_max;
+  cal_status.last_updated = time(NULL);
+  cal_status.ready        = (t_max - t_min >= MIN_TEMP_SWING)
+                          && (r2 >= MIN_R2)
+                          && (sn >= MIN_SAMPLES);
 
   if (cal_status.ready != was_ready) {
     LOG(LL_INFO, ("%s, ready=%d slope=%.4f r2=%.4f n=%d range=%.1f–%.1f°C",

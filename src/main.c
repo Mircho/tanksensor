@@ -558,7 +558,8 @@ static void calibration_status_handler(struct mg_rpc_request_info *ri, void *cb_
     "n_samples:%d,"
     "temp_min:%f,"
     "temp_max:%f,"
-    "ready:%B"
+    "ready:%B,"
+    "last_updated:%d"
     "}",
     mgos_sys_config_get_tank_temp_compensation_slope(),
     cs->slope,
@@ -566,7 +567,8 @@ static void calibration_status_handler(struct mg_rpc_request_info *ri, void *cb_
     cs->n_samples,
     cs->temp_min,
     cs->temp_max,
-    cs->ready);
+    cs->ready,
+    cs->last_updated);
 }
 
 static void calibration_set_slope_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUSED_ARG,

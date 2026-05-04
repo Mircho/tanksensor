@@ -140,9 +140,20 @@ const loadCalibrationStatus = async () => {
   return await resp.json();
 }
 
+const formatTimestamp = (ts) => {
+  if (!ts) return '—';
+  const d = new Date(ts * 1000);
+  const now = new Date();
+  return d.toDateString() === now.toDateString()
+    ? d.toLocaleTimeString()
+    : d.toLocaleString();
+}
+
 const updateCalibrationUI = (status) => {
   document.getElementById('calib-current-slope').innerText = status.current_slope.toFixed(4);
   document.getElementById('calib-samples').innerText = status.n_samples;
+  document.getElementById('calib-ready').innerText = status.ready ? 'Yes' : 'No';
+  document.getElementById('calib-last-updated').innerText = formatTimestamp(status.last_updated);
 
   if (status.n_samples > 0) {
     document.getElementById('calib-r2').innerText = status.r2.toFixed(4);
@@ -152,7 +163,7 @@ const updateCalibrationUI = (status) => {
 
   if (status.ready) {
     document.getElementById('calib-calc-slope').innerText =
-      `${status.calculated_slope.toFixed(4)} ✓`;
+      status.calculated_slope.toFixed(4);
     document.getElementById('calib-slope-input').value =
       status.calculated_slope.toFixed(4);
   } else {

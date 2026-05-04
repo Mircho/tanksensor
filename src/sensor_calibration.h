@@ -10,12 +10,13 @@ enum calibration_event {
 };
 
 typedef struct calibration_status {
-  float slope;
-  float r2;
-  int   n_samples;
-  float temp_min;
-  float temp_max;
-  bool  ready;
+  float  slope;
+  float  r2;
+  int    n_samples;
+  float  temp_min;
+  float  temp_max;
+  bool   ready;
+  time_t last_updated;  // unix timestamp of last regression update; 0 = never
 } calibration_status_t;
 
 void sensor_calibration_init(void);
