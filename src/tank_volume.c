@@ -19,9 +19,8 @@ static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 196.3;
 static const float tank_liters_change_report_threshold = 3;
 
-// derived from 720-point linear regression over 12h of stable water level data
-// (temp range 0.1–20.8 °C, R²=0.991): raw_adc = 2.8431 * T + 571.34
-static const float temp_compensation_slope = 2.8431f;
+// default from 720-point regression (0.1–20.8 °C, R²=0.991); overridden by config on init
+static float temp_compensation_slope = 2.8431f;
 static const float temp_compensation_intercept = 0.0f;
 
 static double env_temperature = 0.0;
@@ -101,9 +100,14 @@ void tank_volume_set_threshold(float pressure_low_threshold, float pressure_high
   filter_linear_fit_calc(&pressure_percentage_fit);
 }
 
+void tank_volume_set_slope(float slope) {
+  temp_compensation_slope = slope;
+}
+
 void tank_volume_init(float pressure_low_threshold, float pressure_high_threshold)
 {
   // init variables and filters
+  temp_compensation_slope = mgos_sys_config_get_tank_temp_compensation_slope();
   tank_volume_set_threshold(pressure_low_threshold, pressure_high_threshold);
 
   percentage_water_height_fit.value_map[0][0] = 0;

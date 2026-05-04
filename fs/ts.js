@@ -135,8 +135,65 @@ const loadDeviceConfig = async () => {
   return await config.json();
 }
 
+const loadCalibrationStatus = async () => {
+  const resp = await fetch(`http://${host}/rpc/Calibration.Status`);
+  return await resp.json();
+}
+
+const updateCalibrationUI = (status) => {
+  document.getElementById('calib-current-slope').innerText = status.current_slope.toFixed(4);
+  document.getElementById('calib-samples').innerText = status.n_samples;
+
+  if (status.n_samples > 0) {
+    document.getElementById('calib-r2').innerText = status.r2.toFixed(4);
+    document.getElementById('calib-temp-range').innerText =
+      `${status.temp_min.toFixed(1)} – ${status.temp_max.toFixed(1)} °C`;
+  }
+
+  if (status.ready) {
+    document.getElementById('calib-calc-slope').innerText =
+      `${status.calculated_slope.toFixed(4)} ✓`;
+    document.getElementById('calib-slope-input').value =
+      status.calculated_slope.toFixed(4);
+  } else {
+    document.getElementById('calib-calc-slope').innerText =
+      status.n_samples > 0
+        ? `collecting… (${status.temp_min.toFixed(1)}–${status.temp_max.toFixed(1)} °C, ${status.n_samples} pts)`
+        : 'waiting for warming phase';
+    document.getElementById('calib-slope-input').value =
+      status.current_slope.toFixed(4);
+  }
+}
+
+const calibrationFormHandler = async (event) => {
+  event.preventDefault();
+  const submitter = event.submitter;
+  submitter.ariaBusy = 'true';
+  const slope = parseFloat(document.getElementById('calib-slope-input').value);
+  const resp = await fetch(`http://${host}/rpc/Calibration.SetSlope`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ slope })
+  });
+  const result = await resp.json();
+  submitter.ariaBusy = 'false';
+  if (result.status) {
+    const status = await loadCalibrationStatus();
+    updateCalibrationUI(status);
+  }
+}
+
 window.addEventListener('load', async (event) => {
   connectWebSockets();
   const deviceConfig = await loadDeviceConfig();
   updateConfigForms(deviceConfig);
+
+  const calibStatus = await loadCalibrationStatus();
+  updateCalibrationUI(calibStatus);
+  document.getElementById('calibration-form').addEventListener('submit', calibrationFormHandler);
+
+  setInterval(async () => {
+    const s = await loadCalibrationStatus();
+    updateCalibrationUI(s);
+  }, 30000);
 })
