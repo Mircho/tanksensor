@@ -106,6 +106,30 @@ filter_ret_val_t filter_item_average_fn(filter_item_t *this, observable_number_t
   return FILTER_CONTINUE;
 }
 
+filter_ret_val_t filter_item_median_fn(filter_item_t *this_item, observable_number_t *var)
+{
+  filter_item_median_t *fi = (filter_item_median_t *)this_item;
+
+  fi->buf_[fi->head_] = var->value;
+  fi->head_ = (fi->head_ + 1) % fi->window_size;
+  if (fi->count_ < fi->window_size) fi->count_++;
+
+  number_type sorted[MEDIAN_FILTER_WINDOW_MAX];
+  for (size_t i = 0; i < fi->count_; i++) sorted[i] = fi->buf_[i];
+  for (size_t i = 1; i < fi->count_; i++) {
+    number_type key = sorted[i];
+    int j = (int)i - 1;
+    while (j >= 0 && sorted[j] > key) {
+      sorted[j + 1] = sorted[j];
+      j--;
+    }
+    sorted[j + 1] = key;
+  }
+
+  var->value = sorted[fi->count_ / 2];
+  return FILTER_CONTINUE;
+}
+
 filter_ret_val_t filter_item_harmonic_average_fn(filter_item_t *this, observable_number_t *var)
 {
   filter_item_harmonic_average_t *fi = (filter_item_harmonic_average_t *)this;

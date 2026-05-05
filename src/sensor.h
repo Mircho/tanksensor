@@ -98,9 +98,22 @@ struct filter_item_clamp
   number_type max;
 };
 
+#define MEDIAN_FILTER_WINDOW_MAX 9
+
+typedef struct filter_item_median filter_item_median_t;
+struct filter_item_median
+{
+  filter_item_t super;
+  size_t window_size;
+  size_t count_;
+  size_t head_;
+  number_type buf_[MEDIAN_FILTER_WINDOW_MAX];
+};
+
 filter_ret_val_t filter_item_linear_fit_fn(filter_item_t *this, observable_number_t *var);
 filter_ret_val_t filter_item_exp_moving_average_fn(filter_item_t *this, observable_number_t *var);
 filter_ret_val_t filter_item_average_fn(filter_item_t *this, observable_number_t *var);
+filter_ret_val_t filter_item_median_fn(filter_item_t *this, observable_number_t *var);
 filter_ret_val_t filter_item_clamp_fn(filter_item_t *this, observable_number_t *var);
 filter_ret_val_t filter_item_offset_fn(filter_item_t *this, observable_number_t *var);
 filter_ret_val_t filter_item_skip_fn(filter_item_t *this, observable_number_t *var);
@@ -196,6 +209,12 @@ struct observable_value
   filter_name.previous_value = 0;                                         \
   filter_name.alpha = alpha_val;                                          \
   filter_name.pass_first = pass_first_val;
+
+#define FILTER_MEDIAN(filter_name, window_size_val) \
+  FILTER(filter_name, median); \
+  filter_name.window_size = (window_size_val); \
+  filter_name.count_ = 0; \
+  filter_name.head_ = 0;
 
 #define FILTER_AVERAGE(filter_name, number_of_samples_val, pass_first_val) \
   FILTER(filter_name, average);                                            \

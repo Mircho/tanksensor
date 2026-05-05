@@ -17,7 +17,7 @@ static const float tank_radius_cm = 25.0;
 static const float tank_length_cm = 100.0;
 static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters = 196.3;
-static const float tank_liters_change_report_threshold = 3;
+static const float tank_liters_change_report_threshold = 1;
 
 // default from 720-point regression (0.1–20.8 °C, R²=0.991); overridden by config on init
 static float temp_compensation_slope = 2.8431f;
@@ -82,9 +82,9 @@ static void pressure_volume_cb(int ev, void *evd, void *user_data UNUSED_ARG)
 {
   if(ev != PRESSURE_MEASUREMENT) return;
   pressure_status_t *pressure_status = evd;
-  int compensated_adc = (int)((float)pressure_status->raw_adc - (temp_compensation_slope * env_temperature + temp_compensation_intercept));
-  LOG(LL_INFO, ("Raw adc %d", pressure_status->raw_adc));
-  LOG(LL_INFO, ("Compensated adc %d", compensated_adc));
+  float compensated_adc = pressure_status->raw_adc - (temp_compensation_slope * env_temperature + temp_compensation_intercept);
+  LOG(LL_INFO, ("Raw adc %.2f", pressure_status->raw_adc));
+  LOG(LL_INFO, ("Compensated adc %.2f", compensated_adc));
   LOG(LL_INFO, ("ENV temperature %f", env_temperature));
 
   tank_water_height.process(&tank_water_height, compensated_adc);

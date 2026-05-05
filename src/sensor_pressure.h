@@ -11,7 +11,7 @@ enum pressure_event {
 };
 
 typedef struct pressure_status {
-  int raw_adc;
+  float raw_adc;
 } pressure_status_t;
 
 bool sensor_pressure_init();

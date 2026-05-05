@@ -60,27 +60,36 @@ cflags:
 
 Provided that the pressure sensor can output from 0.5V to 4.5V for 0 to 5 psi [0 to 0.34 atm] and the maximum water column can be 0.5m e.g. 0.05atm of static pressure  (1 atm for every 10m of water) output of the sensor can not overshoot the maximum 3.3 V value for the ADC input. When overflow occurs dynamic pressure will raise above the maximum but empirically established that voltage will not overshoot.
 
-Not much is provided for hardware filtering thus oversampling and exponential moving averaging is applied to stabilize reported readings.
+#### ADC filtering pipeline
+
+Raw ADC samples are taken every 50 ms and pass through a three-stage filter chain before being used for volume calculation:
+
+1. **Median filter (window = 5 samples)** — rejects impulse spikes caused by EMI or power-supply glitches. The median of the last 5 samples passes through; a single outlier cannot contaminate the accumulator downstream.
+2. **Arithmetic average (200 samples)** — a 10-second boxcar window that reduces Gaussian noise by √200 ≈ 14×. The output is one averaged ADC value every 10 seconds.
+3. **Exponential moving average (α = 0.1)** — provides additional inter-output smoothing with a time constant of ~95 seconds, further suppressing slow noise without adding latency to real level changes.
+
+The combined effect reduces the noise floor from the raw ADC standard deviation (~4–6 ADC units on the ESP32) to well below 0.1 ADC units on the final output — equivalent to less than 0.1 L of apparent water level noise.
 
 #### Temperature compensation
 
-The raw ADC reading drifts with ambient temperature. A linear correction is applied before converting ADC to water height:
+The raw ADC reading drifts linearly with sensor temperature. A correction is applied before converting ADC to water height:
 
 ```
-compensated_adc = raw_adc - (slope * temperature + intercept)
+compensated_adc = raw_adc - slope * temperature
 ```
 
-The slope and intercept are derived from two calibration measurements. To recalibrate:
+The default slope (`2.8431 ADC/°C`) is derived from a linear regression over 720 one-minute samples collected during a 12-hour period of stable water level (temperature range 0.1–20.8 °C, R²=0.991).
 
-1. Keep the tank at a known, stable water level.
-2. Note the raw ADC reading (`/raw` endpoint) at a low temperature T1 and at a higher temperature T2. The true reading should be identical at both points since the water level has not changed — any difference is thermal drift.
-3. The offset needed at each temperature is `raw_adc(Tn) - reference_adc`, where `reference_adc` is the reading you trust (e.g. a measurement taken immediately after a manual level check).
-4. Fit a line through the two points `{T1, offset1}` and `{T2, offset2}`:
-   - `slope = (offset2 - offset1) / (T2 - T1)`
-   - `intercept = offset1 - slope * T1`
-5. Update `temp_compensation_slope` and `temp_compensation_intercept` in `src/tank_volume.c`.
+#### Self-calibration
 
-Current values are derived from a linear regression over 720 one-minute samples collected during a 12-hour period of stable water level (temperature range 0.1–20.8 °C, R²=0.991): `slope=2.8431`, `intercept=0.0`.
+The device continuously collects ADC and temperature data during warming phases (air temperature rising) and runs an online linear regression to estimate a refined slope. Cooling-phase data is excluded because the air temperature sensor (BME280) has significant thermal lag relative to the water-coupled pressure sensor, causing a systematic offset of 10–14 ADC units at the same true sensor temperature.
+
+The calibration is considered ready when:
+- Temperature range covered ≥ 10 °C
+- Fit quality R² ≥ 0.95
+- At least 100 samples collected
+
+Current status and the calculated slope are visible in the web UI under **Temperature compensation**. Once the calculated slope is ready, it can be applied with the **Apply** button, which saves it to device config and takes effect immediately without a reboot.
 
 ## Reporting 
 ### Reporting channels
@@ -117,7 +126,7 @@ JSON containing raw tank status data readings from pressure and flow sensors
 ```
 {
   "timestamp": 1698183816,
-  "tank_pressure_adc": 0,
+  "tank_pressure_adc": 597.5,
   "tank_overflow_count": 0,
   "tank_overflow_frequency": 0.0
 }

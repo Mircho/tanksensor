@@ -102,7 +102,7 @@ struct sensor_info
 struct sensor_raw
 {
   time_t    timestamp;
-  uint16_t  tank_pressure_adc;
+  float     tank_pressure_adc;
   uint16_t  counter_count;
   float     counter_frequency;
 } sensor_raw = {
@@ -157,7 +157,7 @@ const struct mbuf *getRawAsJSON(struct mbuf *buffer)
   json_printf(  &json_result,
                 "{"
                 "timestamp: %d,"
-                "tank_pressure_adc: %d,"
+                "tank_pressure_adc: %4.1f,"
                 "tank_overflow_count: %d,"
                 "tank_overflow_frequency: %3.1f"
                 "}",

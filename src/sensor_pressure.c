@@ -15,7 +15,7 @@ static int pressure_adc_pin = -1;
 
 static mgos_timer_id adc_timer_id = MGOS_INVALID_TIMER_ID;
 static const int timer_period_ms = 50;
-static const size_t number_of_adc_samples = 50;
+static const size_t number_of_adc_samples = 200;
 
 static pressure_status_t pressure_status = {
     .raw_adc = 0};
@@ -30,8 +30,17 @@ observable_value_t pressure_adc = {
     .notify = notify_observers,
 };
 
+// median (spike rejection, window=5)
+filter_item_median_t pressure_median_filter = {
+    .super.filter = filter_item_median_fn,
+    .window_size = 5,
+    .count_ = 0,
+    .head_ = 0,
+    .buf_ = {0}
+};
+
 // average
-filter_item_harmonic_average_t pressure_avg_filter = {
+filter_item_average_t pressure_avg_filter = {
     .super.filter = filter_item_average_fn,
     .number_of_samples = number_of_adc_samples,
     .sample_counter_ = number_of_adc_samples,
@@ -44,14 +53,14 @@ filter_item_exp_moving_average_t pressure_ma_filter = {
     .super.filter = filter_item_exp_moving_average_fn,
     .initialized = false,
     .previous_value = 0,
-    .alpha = 0.8,
+    .alpha = 0.1,
     .pass_first = false
 };
 
 static void pressure_result_callback(observable_value_t *this)
 {
-  LOG(LL_INFO, ("%s, Pressure result %d", TAG, (int)this->value.value));
-  pressure_status.raw_adc = (int)this->value.value;
+  LOG(LL_INFO, ("%s, Pressure result %.2f", TAG, this->value.value));
+  pressure_status.raw_adc = this->value.value;
   mgos_event_trigger(PRESSURE_MEASUREMENT, &pressure_status);
 }
 
@@ -85,6 +94,7 @@ bool sensor_pressure_init()
 
   mgos_event_register_base(PRESSURE_EVENT_BASE, "Tank pressure events");
 
+  add_filter(&pressure_adc, (filter_item_t *)&pressure_median_filter);
   add_filter(&pressure_adc, (filter_item_t *)&pressure_avg_filter);
   add_filter(&pressure_adc, (filter_item_t *)&pressure_ma_filter);
   add_observer(&pressure_adc, pressure_result_callback);
