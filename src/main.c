@@ -18,7 +18,6 @@
 #include "sensor_bme280.h"
 #include "sensor_pressure.h"
 #include "sensor_counter.h"
-#include "sensor_calibration.h"
 #include "tank_volume.h"
 //#include "sensor.h"
 
@@ -53,7 +52,8 @@ static const char *JSON_HEADERS = "Connection: close\r\nContent-Type: applicatio
 static const char *pressure_limits_fmt = "{low_thr:%i, high_thr:%i}";
 static const char *tank_limits_fmt = "{low_thr:%f, high_thr:%f}";
 static const char *freq_thr_fmt = "{freq_thr:%i}";
-static const char *slope_fmt = "{slope:%f}";
+static const char *slope_fmt        = "{slope:%f}";
+static const char *coefficients_fmt = "{slope_cold:%f, slope_warm:%f, t_cold:%f, t_warm:%f}";
 
 const uint8_t RGB_PIN = 5;
 
@@ -546,31 +546,6 @@ static void counter_set_limits_handler(struct mg_rpc_request_info *ri, void *cb_
   free(*msg);
 }
 
-static void calibration_status_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUSED_ARG,
-                                       struct mg_rpc_frame_info *fi UNUSED_ARG, struct mg_str args UNUSED_ARG)
-{
-  const calibration_status_t *cs = sensor_calibration_get_status();
-  mg_rpc_send_responsef(ri,
-    "{"
-    "current_slope:%f,"
-    "calculated_slope:%f,"
-    "r2:%f,"
-    "n_samples:%d,"
-    "temp_min:%f,"
-    "temp_max:%f,"
-    "ready:%B,"
-    "last_updated:%d"
-    "}",
-    mgos_sys_config_get_tank_temp_compensation_slope(),
-    cs->slope,
-    cs->r2,
-    cs->n_samples,
-    cs->temp_min,
-    cs->temp_max,
-    cs->ready,
-    cs->last_updated);
-}
-
 static void calibration_set_slope_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUSED_ARG,
                                           struct mg_rpc_frame_info *fi UNUSED_ARG, struct mg_str args)
 {
@@ -579,14 +554,39 @@ static void calibration_set_slope_handler(struct mg_rpc_request_info *ri, void *
     mg_rpc_send_errorf(ri, 500, "Bad request. Expected {\"slope\":N}");
     return;
   }
-  if (slope <= 0.0f || slope > 10.0f) {
-    mg_rpc_send_errorf(ri, 500, "Invalid slope. Expected value in (0, 10]");
+  if (slope < -5.0f || slope > 10.0f) {
+    mg_rpc_send_errorf(ri, 500, "Invalid slope. Expected value in [-5, 10]");
     return;
   }
-  mgos_sys_config_set_tank_temp_compensation_slope(slope);
+  tank_volume_set_slope(slope);  // syncs all config fields; save below
   char **msg = &(char *){0};
   if (save_cfg(&mgos_sys_config, msg)) {
-    tank_volume_set_slope(slope);
+    mg_rpc_send_responsef(ri, "{status:%B}", true);
+  } else {
+    mg_rpc_send_errorf(ri, 500, "Could not save config");
+  }
+  free(*msg);
+}
+
+static void calibration_set_coefficients_handler(struct mg_rpc_request_info *ri, void *cb_arg UNUSED_ARG,
+                                                  struct mg_rpc_frame_info *fi UNUSED_ARG, struct mg_str args)
+{
+  float sc = 0, sw = 0, tc = 0, tw = 0;
+  if (json_scanf(args.p, args.len, ri->args_fmt, &sc, &sw, &tc, &tw) < 4) {
+    mg_rpc_send_errorf(ri, 500, "Expected {slope_cold, slope_warm, t_cold, t_warm}");
+    return;
+  }
+  if (sc < -5.0f || sc > 10.0f || sw < -5.0f || sw > 10.0f) {
+    mg_rpc_send_errorf(ri, 500, "Slopes must be in [-5, 10]");
+    return;
+  }
+  if (tc >= tw) {
+    mg_rpc_send_errorf(ri, 500, "t_cold must be less than t_warm");
+    return;
+  }
+  tank_volume_set_coefficients(sc, sw, tc, tw);  // syncs all config fields
+  char **msg = &(char *){0};
+  if (save_cfg(&mgos_sys_config, msg)) {
     mg_rpc_send_responsef(ri, "{status:%B}", true);
   } else {
     mg_rpc_send_errorf(ri, 500, "Could not save config");
@@ -605,8 +605,6 @@ enum mgos_app_init_result mgos_app_init(void)
 
 
   LOG(LL_INFO, ("Config read"));
-  sensor_calibration_init();
-
   if (!sensor_bme280_init())
     return MGOS_APP_INIT_ERROR;
 
@@ -649,10 +647,10 @@ enum mgos_app_init_result mgos_app_init(void)
                      "", counter_start_handler, NULL);
   mg_rpc_add_handler(c, "Counter.SetLimits",
                      freq_thr_fmt, counter_set_limits_handler, NULL);
-  mg_rpc_add_handler(c, "Calibration.Status",
-                     "{}", calibration_status_handler, NULL);
   mg_rpc_add_handler(c, "Calibration.SetSlope",
                      slope_fmt, calibration_set_slope_handler, NULL);
+  mg_rpc_add_handler(c, "Calibration.SetCoefficients",
+                     coefficients_fmt, calibration_set_coefficients_handler, NULL);
 
   notify_listeners(NOTIFY_TIMER);
 

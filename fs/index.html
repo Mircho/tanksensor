@@ -137,41 +137,9 @@
     </section>
     <section id="config-calibration">
       <h2>Temperature compensation</h2>
-      <table role="grid">
-        <tbody>
-          <tr>
-            <td>Current slope</td>
-            <td id="calib-current-slope">—</td>
-          </tr>
-          <tr>
-            <td>Calculated slope</td>
-            <td id="calib-calc-slope">—</td>
-          </tr>
-          <tr>
-            <td>Ready</td>
-            <td id="calib-ready">—</td>
-          </tr>
-          <tr>
-            <td>Last calculated</td>
-            <td id="calib-last-updated">—</td>
-          </tr>
-          <tr>
-            <td>Fit quality (R²)</td>
-            <td id="calib-r2">—</td>
-          </tr>
-          <tr>
-            <td>Samples collected</td>
-            <td id="calib-samples">—</td>
-          </tr>
-          <tr>
-            <td>Temperature range</td>
-            <td id="calib-temp-range">—</td>
-          </tr>
-        </tbody>
-      </table>
       <form id="calibration-form">
-        <label for="calib-slope-input">Slope value
-          <input type="number" id="calib-slope-input" step="0.0001" min="0.1" max="10" name="slope" />
+        <label for="calib-slope-input">Slope (ADC/°C) — current: <span id="calib-current-slope">—</span>
+          <input type="number" id="calib-slope-input" step="0.0001" min="-5" max="10" name="slope" />
         </label>
         <button type="submit">Apply</button>
       </form>

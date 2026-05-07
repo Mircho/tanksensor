@@ -16,3 +16,4 @@ typedef struct tank_volume {
 void tank_volume_init(float pressure_low_threshold, float pressure_high_threshold);
 void tank_volume_set_threshold(float pressure_low_threshold, float pressure_high_threshold);
 void tank_volume_set_slope(float slope);
+void tank_volume_set_coefficients(float slope_cold, float slope_warm, float t_cold, float t_warm);

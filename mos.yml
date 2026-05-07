@@ -90,7 +90,12 @@ config_schema:
   - ["tank.liters.low_threshold", "f", 80, {title: "Low threshold in liters"}]
   - ["tank.liters.high_threshold", "f", 180, {title: "High threshold in liters"}]
   - ["tank.frequency.high_threshold", "i", 15, {title: "High threshold of frequency; defines overflow"}]
-  - ["tank.temp_compensation.slope", "f", 2.8431, {title: "Temperature compensation slope (ADC units per °C)"}]
+  - ["tank.temp_compensation.slope_cold", "f", 3.260, {title: "ADC/°C slope used when T < t_cold (cold regime)"}]
+  - ["tank.temp_compensation.slope_warm", "f", 0.468, {title: "ADC/°C slope used when T > t_warm (warm regime)"}]
+  - ["tank.temp_compensation.t_warm", "f", 22.0, {title: "Temperature threshold to enter warm regime (°C)"}]
+  - ["tank.temp_compensation.t_cold", "f", 19.0, {title: "Temperature threshold to enter cold regime (°C)"}]
+  - ["tank.temp_compensation.offset", "f", 0.0, {title: "Intercept offset for regime continuity — managed automatically"}]
+  - ["tank.temp_compensation.regime", "i", 0, {title: "Active regime: 0=cold 1=warm — managed automatically"}]
   #
   - ["board", "o", {title: "Board configuration"}]
   - ["board.led.pin", "i", 2, {title: "LED GPIO pin"}]
