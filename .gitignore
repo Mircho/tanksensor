@@ -5,3 +5,4 @@ temp/*
 .env
 .vscode
 secrets.yml
+.DS_Store
