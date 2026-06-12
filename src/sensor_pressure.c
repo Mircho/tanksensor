@@ -133,15 +133,31 @@ static void pressure_adc_task(void *arg)
     }
   }
 
-  adc_digi_stop();
-  adc_digi_deinitialize();
+  // driver teardown happens in pressure_sampler_stop_sync on the main task —
+  // the task only signals its exit here
   adc_task_handle = NULL;
   vTaskDelete(NULL);
 }
 
+// Fully stops the sampler before returning: waits for the reader task to
+// exit, then tears down the digi driver from the calling (main) task — the
+// same task/core that allocated the interrupt. Must complete before any
+// flash writes start: a live DMA stream during a flash erase crashes the
+// chip.
+static void pressure_sampler_stop_sync()
+{
+  if (adc_task_handle == NULL) return;
+  adc_task_run = false;
+  // reader task notices the flag within one adc_digi_read_bytes timeout
+  for (int i = 0; i < 200 && adc_task_handle != NULL; i++)
+    mgos_msleep(10);
+  adc_digi_stop();
+  adc_digi_deinitialize();
+}
+
 bool pressure_sensor_stop()
 {
-  adc_task_run = false;
+  pressure_sampler_stop_sync();
   return true;
 }
 
@@ -209,8 +225,9 @@ static void ota_cb(int ev, void *evd, void *user_data)
 {
   if (ev == MGOS_EVENT_OTA_BEGIN)
   {
-    LOG(LL_INFO, ("%s, OTA begin - pausing ADC sampler", TAG));
-    pressure_sensor_stop();
+    LOG(LL_INFO, ("%s, OTA begin - stopping ADC sampler", TAG));
+    pressure_sampler_stop_sync();
+    LOG(LL_INFO, ("%s, ADC sampler stopped, OTA may proceed", TAG));
   }
   else if (ev == MGOS_EVENT_OTA_STATUS)
   {

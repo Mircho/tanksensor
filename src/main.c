@@ -333,17 +333,20 @@ static void notify_listeners(notify_type_t notify_reason)
 
 #ifdef MGOS_CONFIG_HAVE_WEBHOOK
   // Webbhook notify
-  // the webhook carries the status JSON — don't fire it for raw notifies
+  // the webhook carries the status JSON — don't fire it for raw notifies.
+  // post_data must stay inside the if-block: a goto jumping over a
+  // __cleanup__ variable's initialization makes the cleanup free a wild
+  // pointer at scope exit
   const char *webhook_url = mgos_sys_config_get_webhook_url();
-  if (webhook_url == NULL || notify_reason == NOTIFY_RAW) goto notify_out;
-  LOG(LL_INFO, ("Notify WebHook URL:  %s", webhook_url));
+  if (webhook_url != NULL && strlen(webhook_url) > 0 && notify_reason != NOTIFY_RAW)
+  {
+    LOG(LL_INFO, ("Notify WebHook URL:  %s", webhook_url));
 
-  char *post_data __attribute__ ((__cleanup__(cleanup_post_data))) = malloc(response_buffer.len + 1);
-  strncpy(post_data, response_buffer.buf, response_buffer.len);
-  post_data[response_buffer.len] = '\0';
-  notify_webhook(webhook_url, post_data);
-
-  notify_out:
+    char *post_data __attribute__ ((__cleanup__(cleanup_post_data))) = malloc(response_buffer.len + 1);
+    strncpy(post_data, response_buffer.buf, response_buffer.len);
+    post_data[response_buffer.len] = '\0';
+    notify_webhook(webhook_url, post_data);
+  }
 #endif
 
   notify_timer_id = mgos_set_timer(notify_timer_period_msec, 0, notify_timer_callback, NULL);

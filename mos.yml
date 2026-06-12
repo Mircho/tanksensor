@@ -40,28 +40,28 @@ cflags:
   - "-DFREQUENCY_TEST_MODE=0"
 #
 config_schema:
-  - ["debug.udp_log_addr", "192.168.2.31:9966"]
+  - ["debug.udp_log_addr", !secret "UDPLOGADDR"] # UDPLOGADDR
   #
   - ["dns_sd.enable", true]
-  - ["dns_sd.host_name", "tanksensor2"] # DEVICE_ID
+  - ["dns_sd.host_name", !secret "DEVICE_ID"] # DEVICE_ID
   - ["dns_sd.txt", "version=2"]
   #
   - ["wifi.sta_connect_timeout", 30]
   - ["wifi.sta_cfg_idx", 0]
   #
   - ["wifi.sta.enable", true]
-  - ["wifi.sta.ssid", "iotE"] # WIFI1SSID
-  - ["wifi.sta.pass", "delirium"] # WIFI1PASS
-  - ["wifi.sta.dhcp_hostname", "tanksensor2"] # DEVICE_ID
+  - ["wifi.sta.ssid", !secret "WIFI1SSID"] # WIFI1SSID
+  - ["wifi.sta.pass", !secret "WIFI1PASS"] # WIFI1PASS
+  - ["wifi.sta.dhcp_hostname", !secret "DEVICE_ID"] # DEVICE_ID
   #
   - ["wifi.sta1.enable", true]
-  - ["wifi.sta1.ssid", "linux-bg.org"] # WIFI2SSID
-  - ["wifi.sta1.pass", "@tl@nt@2"] # WIFI2PASS
-  - ["wifi.sta1.dhcp_hostname", "tanksensor2"] # DEVICE_ID
+  - ["wifi.sta1.ssid", !secret "WIFI2SSID"] # WIFI2SSID
+  - ["wifi.sta1.pass", !secret "WIFI2PASS"] # WIFI2PASS
+  - ["wifi.sta1.dhcp_hostname", !secret "DEVICE_ID"] # DEVICE_ID
   #
   - ["wifi.ap.enable", false]
-  - ["wifi.ap.ssid", "tanksensor2_??????"] # APSSID
-  - ["wifi.ap.pass", "12345678"] # APPASS
+  - ["wifi.ap.ssid", !secret "APSSID"] # APSSID
+  - ["wifi.ap.pass", !secret "APPASS"] # APPASS
   #
   - ["i2c", "o", {title: "I2C settings"}]
   - ["i2c.unit_no", "i", 1, {title: "Which hardware unit to use, 0 or 1"}]
@@ -71,7 +71,7 @@ config_schema:
   - ["i2c.scl_gpio", "i", 22, {title: "GPIO to use for SCL"}]
   #
   - ["mqtt.enable", "b", true, {title: "Enable MQTT"}]
-  - ["mqtt.server", "s", "epi4:1883", {title: "MQTT server"}]
+  - ["mqtt.server", !secret "MQTTSERVER"] # MQTTSERVER
   - ["mqtt.reconnect_timeout_min", "d", 2.0, {title: "Starting reconnect timeout"}]
   - ["mqtt.reconnect_timeout_max", "d", 60.0, {title: "Maximum reconnect timeout"}]
   #
@@ -82,7 +82,8 @@ config_schema:
   - ["http.raw_url", "s", "/raw", {title: "raw data url for get or ws"}]
   #
   - ["webhook", "o", {title: "Webhooks to hit with post json data"}]
-  - ["webhook.url", "s", "http://thisdoesnotexist.local/test", {title: "url to post to"}]
+  - ["webhook.url", "s", "", {title: "url to post to; empty disables the webhook"}]
+  - ["webhook.url", !secret "WEBHOOKURL"] # WEBHOOKURL
   #
   - ["tank", "o", {title: "Tank configuration, cylinder"}]
   - ["tank.adc_pressure.low_threshold", "i", 358, {title: "Low threshold of ADC pressure reading"}]
@@ -90,11 +91,11 @@ config_schema:
   - ["tank.liters.low_threshold", "f", 80, {title: "Low threshold in liters"}]
   - ["tank.liters.high_threshold", "f", 180, {title: "High threshold in liters"}]
   - ["tank.frequency.high_threshold", "i", 15, {title: "High threshold of frequency; defines overflow"}]
-  - ["tank.temp_compensation.slope_cold", "f", 3.260, {title: "ADC/°C slope used when T < t_cold (cold regime)"}]
-  - ["tank.temp_compensation.slope_warm", "f", 0.468, {title: "ADC/°C slope used when T > t_warm (warm regime)"}]
+  - ["tank.temp_compensation.slope_cold", "f", 4.6624, {title: "ADC/°C slope used when T < t_cold (cold regime)"}]
+  - ["tank.temp_compensation.slope_warm", "f", 4.6624, {title: "ADC/°C slope used when T > t_warm (warm regime)"}]
   - ["tank.temp_compensation.t_warm", "f", 22.0, {title: "Temperature threshold to enter warm regime (°C)"}]
   - ["tank.temp_compensation.t_cold", "f", 19.0, {title: "Temperature threshold to enter cold regime (°C)"}]
-  - ["tank.temp_compensation.offset", "f", 0.0, {title: "Intercept offset for regime continuity — managed automatically"}]
+  - ["tank.temp_compensation.offset", "f", 32.35, {title: "Intercept offset for regime continuity — managed automatically"}]
   - ["tank.temp_compensation.regime", "i", 0, {title: "Active regime: 0=cold 1=warm — managed automatically"}]
   #
   - ["board", "o", {title: "Board configuration"}]
