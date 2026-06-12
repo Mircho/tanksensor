@@ -59,6 +59,11 @@ const uint8_t RGB_PIN = 5;
 
 struct mgos_neopixel *board_rgb = NULL;
 
+// "ok", or "degraded:<failed subsystems>" — reported in status JSON and
+// shown red on the RGB LED, while the device stays on the network so a
+// failure is always remotely diagnosable and recoverable
+static char device_health[64] = "ok";
+
 typedef enum notify_type
 {
   NOTIFY_TIMER = 0,
@@ -131,6 +136,7 @@ const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
   json_printf(&json_result,
               "{"
               "timestamp: %d,"
+              "device_health: %Q,"
               "air_temperature: %4.2f,"
               "air_pressure: %5.1f,"
               "air_humidity: %4.1f,"
@@ -140,6 +146,7 @@ const struct mbuf *getSatusAsJSON(struct mbuf *buffer)
               "tank_overflow: %B"
               "}",
               sensor_info.timestamp,
+              device_health,
               sensor_info.air_temperature,
               sensor_info.air_pressure,
               sensor_info.air_humidity,
@@ -278,9 +285,10 @@ static void notify_listeners(notify_type_t notify_reason)
 
   static time_t last_notify_timestamp;
 
-  if(notify_reason != NOTIFY_RAW) {
-    mgos_clear_timer(notify_timer_id);
-  }
+  // always clear the pending fallback timer before re-arming below —
+  // raw notifies at 1 Hz used to orphan armed timers, each firing an
+  // extra NOTIFY_TIMER and cascading into a notify storm
+  mgos_clear_timer(notify_timer_id);
 
   if(last_notify_timestamp == sensor_info.timestamp) {
     sensor_info.timestamp = time(NULL);
@@ -325,8 +333,9 @@ static void notify_listeners(notify_type_t notify_reason)
 
 #ifdef MGOS_CONFIG_HAVE_WEBHOOK
   // Webbhook notify
+  // the webhook carries the status JSON — don't fire it for raw notifies
   const char *webhook_url = mgos_sys_config_get_webhook_url();
-  if (webhook_url == NULL) goto notify_out;
+  if (webhook_url == NULL || notify_reason == NOTIFY_RAW) goto notify_out;
   LOG(LL_INFO, ("Notify WebHook URL:  %s", webhook_url));
 
   char *post_data __attribute__ ((__cleanup__(cleanup_post_data))) = malloc(response_buffer.len + 1);
@@ -605,23 +614,34 @@ enum mgos_app_init_result mgos_app_init(void)
 
 
   LOG(LL_INFO, ("Config read"));
-  if (!sensor_bme280_init())
-    return MGOS_APP_INIT_ERROR;
+  // a failed sensor must not take down the whole app: returning
+  // MGOS_APP_INIT_ERROR makes mgos restart in a tight loop before WiFi
+  // associates, leaving the device unreachable for OTA recovery — instead
+  // the device declares itself degraded (status JSON + red LED) and stays up
+  bool ok_bme280 = sensor_bme280_init();
+  bool ok_pressure = sensor_pressure_init();
+  bool ok_counter = sensor_counter_init();
+  if (ok_counter)
+    sensor_counter_start();
 
-  if (!sensor_pressure_init())
-    return MGOS_APP_INIT_ERROR;
-
-  if (!sensor_counter_init())
-    return MGOS_APP_INIT_ERROR;
-
-  sensor_counter_start();
+  if (!ok_bme280 || !ok_pressure || !ok_counter)
+  {
+    snprintf(device_health, sizeof(device_health), "degraded:%s%s%s",
+             ok_bme280 ? "" : " bme280",
+             ok_pressure ? "" : " pressure",
+             ok_counter ? "" : " counter");
+    LOG(LL_ERROR, ("%s - device stays up for remote recovery", device_health));
+  }
 
   tank_volume_init(pressure_low_value, pressure_high_value);
 
   LOG(LL_INFO, ("Periphery started"));
 
   board_rgb = mgos_neopixel_create(mgos_sys_config_get_board_rgb_pin(), 1, MGOS_NEOPIXEL_ORDER_RGB);
-  mgos_neopixel_set(board_rgb, 0, 0, 0, 0);
+  if (strcmp(device_health, "ok") != 0)
+    mgos_neopixel_set(board_rgb, 0, 255, 0, 0); // solid red = degraded
+  else
+    mgos_neopixel_set(board_rgb, 0, 0, 0, 0);
   mgos_neopixel_show(board_rgb);
 
   // use two handlers registrations to tag the ws connections

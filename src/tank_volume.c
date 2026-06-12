@@ -18,7 +18,9 @@ static const float tank_radius_cm         = 25.0;
 static const float tank_length_cm         = 100.0;
 static const float tank_radius_squared_cm2 = tank_radius_cm * tank_radius_cm;
 static const float tank_maximum_liters    = 196.3;
-static const float tank_liters_change_report_threshold = 1;
+// ~3.5x the measured noise floor of the DMA-oversampled pipeline
+// (sigma ~0.15 L at mid-tank); below ~0.3 L reports chatter on noise
+static const float tank_liters_change_report_threshold = 0.5f;
 
 // Two-regime temperature compensation with hysteresis.
 // Regime 0 (cold): applied when T < t_cold_thr
@@ -67,6 +69,7 @@ static void maybe_switch_regime(float T) {
 void on_tank_water_height_change(observable_value_t *this)
 {
   static float last_reported_liters = 0;
+  static double last_full_report_uptime = 0;
   float tank_water_height_cm = this->value.value;
 
   LOG(LL_INFO, ("Water height %f", tank_water_height_cm));
@@ -75,11 +78,18 @@ void on_tank_water_height_change(observable_value_t *this)
   tank_volume.tank_liters     = tank_volume_cm3 / 1000.0;
   tank_volume.tank_percentage = tank_volume.tank_liters / tank_maximum_liters * 100.0;
 
-  if (tank_volume.tank_percentage < 100.0 &&
-      fabs(tank_volume.tank_liters - last_reported_liters) < tank_liters_change_report_threshold) return;
+  // at 100% the clamp freezes the value, so the threshold alone would go
+  // silent — keep reporting, but at most every 10 s now that measurements
+  // arrive at 1 Hz
+  bool below_threshold =
+      fabs(tank_volume.tank_liters - last_reported_liters) < tank_liters_change_report_threshold;
+  if (tank_volume.tank_percentage >= 100.0) {
+    if (below_threshold && mgos_uptime() - last_full_report_uptime < 10.0) return;
+  } else if (below_threshold) return;
 
   mgos_event_trigger(VOLUME_MEASUREMENT, &tank_volume);
   last_reported_liters = tank_volume.tank_liters;
+  last_full_report_uptime = mgos_uptime();
 }
 
 static observable_value_t tank_water_height = {
